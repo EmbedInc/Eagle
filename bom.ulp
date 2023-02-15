@@ -1,0 +1,116 @@
+#usage "<b><h1>Create BOM from board or schematic</h1></b>\n"
+  "<p>"
+  "Creates the <i>boardname</i>_bom.tsv file, which is a tab-delimited file "
+  "suitable for importing into Microsoft Excel, although it would likely work "
+  "with most spreadsheet programs.&nbsp;  The empty template spreadsheet file "
+  "<i>boardname</i>_bom.xls is also created, which is all set up for importing "
+  "the .TSV file directly.&nbsp;"
+  "<p>"
+  "Various user-defined attributes are used to indicate information about parts "
+  "on the board and in libraries.&nbsp;  See the Embed Inc EAGLE_ATTR "
+  "documentation file for a list of these attributes and their meanings.&nbsp; "
+  "The Embed Inc documentation file CSV_BOM describes the overall process of "
+  "BOM generation, of which this ULP is a part.&nbsp;"
+  "<p>"
+  "Eagle version 5 or later is required.&nbsp;"
+
+//******************************************************************************
+//
+//   Subroutine WRITE_FIELD (S)
+//
+//   Write one additional comma separated field to the current output line.  The
+//   new field is assumed to not be at the beginning of the line.  The comma
+//   after the previous field will be written, followed by the new field
+//   contents.  S is the string value for the new field.  Formatting will be
+//   added as necessary so that when the CSV file line is parsed, the resulting
+//   field value will be the contents of S.  S may contain quotes and commas.
+//
+void write_field (
+  string s) {
+
+string field;                          //complete string to write for this field
+int ind;                               //input string index
+
+  field = ", \"";                      //comma separator and leading quote
+  for (ind = 0; s[ind]; ind++) {       //scan the input string
+    field = field + s[ind];            //add this character to output string
+    if (s[ind] == '"') {               //this character is quote ?
+      field = field + '"';             //add second quote to parse as single quote later
+      }
+    }
+  field = field + '"';                 //add trailing quote around field contents
+  printf ("%s", field);                //write the string for this field to the output
+  }
+
+//******************************************************************************
+//
+//   Start of main program.
+//
+string fnam;                           //CSV file name
+string gnam;                           //generic files name
+char show;                             //show part data when true
+string name;                           //scratch object name string
+int exstat;                            //external command exit status code
+//
+//   Start of executable program.
+//
+if (EAGLE_VERSION < 5) {               //not a supported Eagle version ?
+  dlgMessageBox (
+    "<center><h1>Duh!</h1><center>"
+    "This ULP is not supported on this old version of Eagle, "
+    "just like the documentation says.",
+    "&Yes, I'm a moron");
+    exit (EXIT_FAILURE);
+  }
+project.schematic (sch) {              //open the schematic
+  fnam = sch.name;                     //get initial output file name from schematic
+  }
+gnam = filesetext (fnam, "");          //remove .SCH file name suffix
+fnam = gnam + "_parts";                //add to base name to indicate parts list
+fnam = filesetext (fnam, ".csv");      //change to .CSV file type
+
+output (fnam, "wt") {                  //open the output file for text write
+  project.schematic (sch) {            //open the schematic
+    printf (
+      "designator, library, device, value, package, MANUF, PARTNUM, SUPPLIER, VALSTAT, BOM, SUBST, DESC, DVAL, QTY, INHOUSE\n");
+    sch.parts (prt) {                  //open list of parts in schematic
+      name = prt.name;                 //make string copy of part name
+      show = 1;                        //init to show this part
+      if ((name[0] == 'U') && (name[1] == '$')) { //hidden symbol ?
+        show = 0;
+        }
+      if (!prt.device.package) show = 0; //skip device if it has no package
+      if (strupr(prt.attribute["BOM"]) == "YES") { //explicitly flagged to be on BOM ?
+        show = 1;
+        }
+      if (show) {                      //write info about this part to output file ?
+        printf ("%s", prt.name);
+        write_field (prt.device.library);
+        write_field (prt.device.name);
+        write_field (prt.value);
+        if (prt.device.package)
+          {
+            write_field (prt.device.package.name);
+          } else {
+            write_field ("");
+          }
+        write_field (prt.attribute["MANUF"]);
+        write_field (prt.attribute["PARTNUM"]);
+        write_field (prt.attribute["SUPPLIER"]);
+        write_field (prt.attribute["VALSTAT"]);
+        write_field (prt.attribute["BOM"]);
+        write_field (prt.attribute["SUBST"]);
+        write_field (prt.attribute["DESC"]);
+        write_field (prt.attribute["DVAL"]);
+        write_field (prt.attribute["QTY"]);
+        write_field (prt.attribute["INHOUSE"]);
+        printf ("\n");
+        }                              //done writing this part to output file
+      }                                //back to do next part in schematic
+    }                                  //close the schematic
+  }                                    //close the output file
+exstat = system ("run_cmline (cog)com/csv_bom " + fnam);
+if (exstat) {
+  dlgMessageBox (":Program CSV_BOM failed.", "&Acknowleded");
+  exit (EXIT_FAILURE);
+  }

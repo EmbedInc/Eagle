@@ -1,0 +1,294 @@
+#usage "<b><h1>Align designators horizontally, center Docu text on part</h1></b>\n"
+  "<p>"
+  "This ULP is intended to be run at the beginning of cleaning up the silkscreen "
+  "and assembly drawing of a board.  Cleaning up the silkscreen includes manually "
+  "moving the component designators to open locations, and putting the Docu text "
+  "near the center of the part.  Both need to be oriented for easy reading.  This "
+  "means right-side-up on the board for the silkscreen component designators, and "
+  "the same on the assembly drawing for the Docu text."
+  "<p>"
+  "This script will attempt to orient all the silkscreen and Docu component "
+  "designators right side up.  It will also center the Docu text on the origin "
+  "of its part.  Signficant manual adjustment will still be required, but this "
+  "takes care of some of the required operations and provides more useful "
+  "starting points."
+
+string fnam;                      //output file name
+real bbx_lft, bbx_rit, bbx_bot, bbx_top; //bounding box, inches
+
+//******************************************************************************
+//
+//   Subroutine BBX_INIT
+//
+//   Initialize the global bounding box BBX_LFT, BBX_RIT, BBX_BOT, and BBX_TOP
+//   to invalid.
+//
+void bbx_init (void) {            //init bounding box, ready to add points
+
+  bbx_lft = REAL_MAX;             //init to maximum reverse extent
+  bbx_rit = REAL_MIN;
+  bbx_bot = REAL_MAX;
+  bbx_top = REAL_MIN;
+  }
+
+//******************************************************************************
+//
+//   Subroutine BBX_INV_ZERO
+//
+//   Set the global bounding box to just 0 in each dimension when invalid.  The
+//   box is guaranteed to be valid (left <= right, bottom <= top) upon return.
+//
+void bbx_inv_zero (void) {        //make sure bounding box is valid, use 0 if needed
+
+  if (bbx_lft > bbx_rit) {        //invalid in X ?
+    bbx_lft = 0.0;
+    bbx_rit = 0.0;
+    }
+  if (bbx_bot > bbx_top) {        //invalid in Y ?
+    bbx_bot = 0.0;
+    bbx_top = 0.0;
+    }
+  }
+
+//******************************************************************************
+//
+//   Subroutine BBX_ADD_POINT (X, Y)
+//
+//   Add the inches coordinate X,Y to the bounding box.  The bounding box will
+//   be grown, as necessary, to include the point.
+//
+void bbx_add_point (              //add point to bounding box, inches
+  real x, real y) {               //point to include in bounding box
+
+  bbx_lft = min(bbx_lft, x);      //update box to make sure point is included
+  bbx_rit = max(bbx_rit, x);
+  bbx_bot = min(bbx_bot, y);
+  bbx_top = max(bbx_top, y);
+  }
+
+//******************************************************************************
+//
+//   Subroutine BBX_ADD_IPOINT (IX, IY)
+//
+//   Add a point is raw Eagle coordinates.  These will be converted to inches
+//   and the global bounding box grown, if necessary, to include the point.
+//
+void bbx_add_ipoint (             //add point to bounding box, Eagle coordinates
+  int ix, int iy) {               //point to include in bounding box
+
+  bbx_add_point (u2inch(ix), u2inch(iy)); //convert to inches, add to bounding box
+  }
+
+//******************************************************************************
+//
+//   Subroutine BBX_TEXT_VECT (TXT)
+//
+//   Computes the bounding box of all the vectors of a text string for when the
+//   text has a rotation angle of 0.  The actual current rotation angle is
+//   irrelevant.
+//
+//   The result is written to the global variables BBX_LFT, BBX_RIT, BBX_BOT,
+//   and BBX_TOP.  The thickness of the vectors is taken into account.
+//
+void bbx_text_vect (              //compute text vectors bounding box
+  UL_TEXT txt) {                  //the text element
+
+real xo, yo;                      //origin in inches units
+real xbx, xby;                    //X basis vector for transform from rotated space
+real ybx, yby;                    //Y basis vector for transform from rotated space
+real xr, yr;                      //coordinate in unrotated space
+real x, y;                        //scratch coordinate
+real r;                           //scratch floating point
+
+  xo = u2inch(txt.x);             //save text string origin in inches space
+  yo = u2inch(txt.y);
+
+  r = PI * txt.angle / 180.0;     //rotation angle in radians
+  xbx = cos(r);                   //make rotated to canonical orientation transform
+  xby = sin(r);
+  ybx = -xby;
+  yby = xbx;
+
+  bbx_init ();                    //init bounding box
+  txt.wires (wir) {               //loop over all line segments
+    xr = u2inch(wir.x1) - xo;     //get displacement of segment start point
+    yr = u2inch(wir.y1) - yo;
+    x = xr * xbx + yr * xby;      //transform to text string space
+    y = xr * ybx + yr * yby;
+    bbx_add_point (x, y);         //update bounding box with this point
+
+    xr = u2inch(wir.x2) - xo;     //get displacement of segment start point
+    yr = u2inch(wir.y2) - yo;
+    x = xr * xbx + yr * xby;      //transform to text string space
+    y = xr * ybx + yr * yby;
+    bbx_add_point (x, y);         //update bounding box with this point
+    }                             //back for next wire in text string
+  bbx_inv_zero ();                //box around origin if no points found
+
+  r = u2inch(txt.size) * txt.ratio / 200.0; //make half line width
+  bbx_lft = bbx_lft - r;          //grow box to account for line width
+  bbx_rit = bbx_rit + r;
+  bbx_bot = bbx_bot - r;
+  bbx_top = bbx_top + r;
+//
+//   Normalize the left side of the box to 0.0.  This is very close to where
+//   Eagle puts the origin of the string when the rotation angle is 0.  When
+//   the origin is at the end of the string, it leaves a little extra space for
+//   some reason.
+//
+  bbx_rit = bbx_rit - bbx_lft;
+  bbx_lft = 0.0;
+//
+//   Adjust the box if the text is mirrored.  The origin will be in the lower
+//   right corner instead of the lower left.
+//
+  if (txt.mirror) {
+    bbx_lft = bbx_lft - bbx_rit;
+    bbx_rit = 0.0;
+    }
+
+  }
+
+//******************************************************************************
+//
+//   Subroutine TEXT_SHOW (TXT)
+//
+//   Show the data of the text object TXT as comments in the script output file.
+//
+void text_show (                  //show text object data in comments
+  UL_TEXT txt) {                  //text object to show data of
+
+  bbx_text_vect (txt);            //compute text vectors bounding box
+
+  printf ("\n");
+  printf ("#   Text string: \"%s\"\n", txt.value);
+  printf ("#     angle %f\n", txt.angle);
+  printf ("#     align %d\n", txt.align);
+  printf ("#     layer %u\n", txt.layer);
+  printf ("#     linedistance %d\n", txt.linedistance);
+  printf ("#     mirror %d\n", txt.mirror);
+  printf ("#     ratio %d\n", txt.ratio);
+  printf ("#     size %f\n", u2inch(txt.size));
+  printf ("#     spin %d\n", txt.spin);
+  printf ("#     X,Y %f %f\n", u2inch(txt.x), u2inch(txt.y));
+  printf ("#     Box lft %f rit %f bot %f top %f\n",
+    bbx_lft, bbx_rit, bbx_bot, bbx_top);
+  printf ("#\n");
+  }
+
+//******************************************************************************
+//
+//   Subroutine TEXT_UP (TXT)
+//
+//   Set the orientation of the text TXT for normal reading with X to the right
+//   and Y up.
+//
+void text_up (                    //orient text up
+  UL_TEXT txt) {                  //the text element to orient
+
+  if (txt.angle != 0.0) {
+    printf ("rotate =");
+    if (                          //on bottom of board ?
+        (txt.layer == LAYER_BPLACE) ||
+        (txt.layer == LAYER_BNAMES) ||
+        (txt.layer == LAYER_BVALUES) ||
+        (txt.layer == LAYER_BDOCU) ) {
+      printf ("M");
+      }
+    printf ("R0 (C %f %f);\n",
+      u2inch(txt.x), u2inch(txt.y));
+    }
+  }
+
+//******************************************************************************
+//
+//   Subroutine TEXT_CENT (TXT, CX, CY, OFX, OFY)
+//
+//   Center the text TXT on the point CX,CY in inches, plus the offset OFX,OFY
+//   in units of text string width/height.  The text orientation will be set to
+//   0.
+//
+void text_cent (                  //center text about point
+  UL_TEXT txt,                    //text to center
+  real cx, real cy,               //the coordinate to center it at, inches
+  real ofx, real ofy) {           //additional offset in text string sizes
+
+real x, y;                        //scratch coordinate
+
+  if (txt.angle != 0.0) {         //make sure rotation is 0
+    text_up (txt);
+    }
+
+  bbx_text_vect (txt);            //compute text bouding box for rotation 0
+
+  x = cx - (bbx_lft + bbx_rit)/2.0; //coordinate to place text at due to CX,CY
+  y = cy - (bbx_bot + bbx_top)/2.0;
+  x = x + ofx * (bbx_rit - bbx_lft); //adjust according to OFX,OFY
+  y = y + ofy * (bbx_top - bbx_bot);
+
+  printf ("move (C %f %f) (%f %f);\n",
+    u2inch(txt.x), u2inch(txt.y), x, y);
+  }
+
+//******************************************************************************
+//
+//   Start of main program.
+//
+fnam = argv[0];                   //init temp script name to full ULP pathname
+fnam = filesetext (fnam, ".scr"); //make script file of same generic name
+output (fnam, "wtD") {            //open temporary script output file
+  project.board (brd) {           //open the board
+
+    printf ("display none tNames;\n");
+    brd.elements (ele) {          //loop over all the elements of this board
+      ele.texts (txt) {           //loop over all smashed text strings this element
+        if (txt.layer == LAYER_TNAMES) {
+          //text_show (txt);
+          text_cent (txt, u2inch(ele.x), u2inch(ele.y), 0.0, -1.0); //just below mid
+          }
+        }                         //back for next smashed text string this element
+      }                           //back for next element this board
+    printf ("display last;\n");   //restore to originally displayed layers
+
+    printf ("display none tDocu;\n");
+    brd.elements (ele) {          //loop over all the elements of this board
+      ele.texts (txt) {           //loop over all smashed text strings this element
+        if (txt.layer == LAYER_TDOCU) {
+          //text_show (txt);
+          text_cent (txt, u2inch(ele.x), u2inch(ele.y), 0.0, 0.0); //center text on part origin
+          }
+        }                         //back for next smashed text string this element
+      }                           //back for next element this board
+    printf ("display last;\n");   //restore to originally displayed layers
+
+    printf ("display none bNames;\n");
+    brd.elements (ele) {          //loop over all the elements of this board
+      ele.texts (txt) {           //loop over all smashed text strings this element
+        if (txt.layer == LAYER_BNAMES) {
+          //text_show (txt);
+          text_cent (txt, u2inch(ele.x), u2inch(ele.y), 0.0, -1.0); //just below mid
+          }
+        }                         //back for next smashed text string this element
+      }                           //back for next element this board
+    printf ("display last;\n");   //restore to originally displayed layers
+
+    printf ("display none bDocu;\n");
+    brd.elements (ele) {          //loop over all the elements of this board
+      ele.texts (txt) {           //loop over all smashed text strings this element
+        if (txt.layer == LAYER_BDOCU) {
+          //text_show (txt);
+          text_cent (txt, u2inch(ele.x), u2inch(ele.y), 0.0, 0.0); //center text on part origin
+          }
+        }                         //back for next smashed text string this element
+      }                           //back for next element this board
+    printf ("display last;\n");   //restore to originally displayed layers
+
+    }                             //close the board
+  }                               //close the script output file
+
+//
+//   The script has been all written.  FNAM is the complete pathname of the
+//   script file.
+//
+
+exit ("script " + fnam + ";");    //exit ULP and run the script we just wrote

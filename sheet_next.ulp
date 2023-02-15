@@ -1,0 +1,29 @@
+#usage "<b><h1>Go to next schematic sheet</h1></b>\n"
+
+int oldsheet;                     //1-N number of the current sheet
+int lastsheet;                    //number of last existing schematic sheet
+string cmd;                       //command to execute on exit
+
+//
+//   Start of main program.
+//
+  sheet (sh) {                    //open the current sheet
+    oldsheet = sh.number;         //get the 1-N number of the current sheet
+    }
+
+  lastsheet = 0;                  //init last sheet number to invalid
+  schematic (sch) {               //open the whole schematic
+    sch.sheets(sh) {              //loop thru the sheets of the schematic
+      lastsheet = max(lastsheet, sh.number); //save largest sheet number
+      }
+    }
+
+  if (oldsheet < lastsheet)
+    {                             //there is a sheet to advance to
+      sprintf (cmd, "edit .s%d;\n", oldsheet + 1);
+      exit (cmd);
+      }
+    else {                        //already at last sheet
+      exit (EXIT_SUCCESS);        //do nothing
+      }
+    ;

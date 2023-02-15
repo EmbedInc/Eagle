@@ -1,0 +1,122 @@
+#usage "<b><h1>Modify board to contain only pogo pin pads</h1></b>\n"
+  "<p>"
+  "All board components except pogo pin pads will be deleted.&nbsp; "
+  "This allows creating a gerber file from the bottom layer that only "
+  "indicates pogo pin pad locations.&nbsp;  Such a gerber file is used "
+  "by the automated process of the test fixture builders to determine "
+  "pogo pin drill locations in the test plate.&nbsp; "
+  "<p>"
+  "<b>WARNING:</b> This ULP should be run on a copy of the board "
+  "only, since it will permanently delete most components.&nbsp; "
+  "The copy must also not have a schematic associated with it."
+
+//*************************************************************************
+//
+//   Start of main program.
+//
+string fnam;                           //output file name
+string cmd;                            //command to execute after this ULP finishes
+string s1, s2;                         //sctatch strings
+int dele;                              //not 0 means delete this element
+int i;                                 //scratch integer and loop counter
+
+if (board == 0) {                      //not in the board editor ?
+  dlgMessageBox (":This ULP must be run in the board editor, just like "
+    "the documentation says.", "Duh!");
+  exit (EXIT_FAILURE);
+  }
+if (project.schematic != 0) {          //a schematic exists for this board ?
+  dlgMessageBox (":There must not be a schematic associated with the "
+    "board.  Read the documentation, moron.", "Duh!");
+  exit (EXIT_FAILURE);
+  }
+
+board (brd) {                          //open the board
+fnam = argv[0];                        //init temp script name to full ULP pathname
+fnam = filesetext (fnam, ".scr");      //make script file of same generic name
+output (fnam, "wtD") {                 //open temporary script output file
+  printf ("display none 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16;\n");
+  printf ("ripup;\n");
+//
+//   Delete all the elements that aren't from the right library and don't
+//   have the right name to be pogo pin pads.
+//
+  printf ("display none tOrigins bOrigins;\n");
+  printf ("\n#   Delete all elements that aren't pogo pin pads.\n#\n");
+
+  brd.elements (ele) {                 //once for each element on the board
+    dele = 1;                          //init to delete this element
+    s1 = strupr(ele.package.library);  //make upper case library name
+    if (s1 == "CONNECTOR") {           //this element in the CONNECTOR library ?
+      s1 = strupr(ele.package.name);   //make upper case element name
+      s2 = strsub(s1, 0, 4);
+      if (s2 == "POGO") dele = 0;      //normal pogo pin pad ?
+      s2 = strsub(s1, 0, 6);
+      if (s2 == "TPCOAX") dele = 0;    //coax pogo pin pad ?
+      }
+    if (dele) {                        //need to delete this element ?
+      printf ("delete (%g %g);\n", u2inch(ele.x), u2inch(ele.y));
+      }
+    }                                  //back for next element in board
+//
+//   Delete circles, text strings, rectangles, wires and polygons in the
+//   bottom layer.
+//
+  printf ("\ndisplay none Bottom;\n"); //make only the bottom layer active
+
+  printf ("\n#   Delete circles in bottom layer.\n#\n");
+  brd.circles (obj) {                  //once for each circle on the board
+    if (obj.layer == 16) {             //this object is in the bottom layer ?
+      printf ("delete (%g %g);\n", u2inch(obj.x), u2inch(obj.y));
+      }
+    }
+
+  printf ("\n#   Delete rectangles in bottom layer.\n#\n");
+  brd.rectangles (obj) {               //once for each rectangle on the board
+    if (obj.layer == 16) {             //this object is in the bottom layer ?
+      printf ("delete (%g %g);\n", u2inch(obj.x1), u2inch(obj.y1));
+      }
+    }
+
+//  printf ("\n#   Wires.\n#\n");
+//  brd.wires (obj) {                    //once for each wire on the board
+//    printf ("Wire in layer %u\n", obj.layer);
+//    if (obj.layer == 16) {             //this object is in the bottom layer ?
+//      printf ("delete (%g %g);\n", u2inch(obj.x1), u2inch(obj.y1));
+//      }
+//    }
+
+//  printf ("\n#   Polygons.\n#\n");
+//  brd.polygons (obj) {                 //once for each polygon on the board
+//    printf ("Polygon in layer %u\n", obj.layer);
+//    if (obj.layer == 16) {             //this object is in the bottom layer ?
+//      i = 0;                           //init number of wire defining polygon
+//      obj.wires (wir) {                //loop thru all wires defining polygon edges
+//        i++;                           //make 1-N number of this polygon edge
+//        if (i >= 0) {                  //skip over the first two edges
+//          printf ("delete (%g %g);\n", u2inch(wir.x1), u2inch(wir.y1));
+//          }
+//        }                              //back for next polygon edge wire
+//      }                                //done with in bottom layer case
+//    }                                  //back for next polygon in board
+
+  printf ("\n#   Delete all text strings.\n#\n");
+  brd.texts (obj) {                    //once for each text string on the board
+    printf ("display none %u;\n", obj.layer);
+    printf ("delete (%g %g);\n", u2inch(obj.x), u2inch(obj.y));
+    }
+//
+//   Leave the display showing only the layers that will go into the pogo pin
+//   pads gerber file.
+//
+  printf ("\ndisplay none Bottom Pads Dimension Holes;\n");
+  printf ("ratsnest\n");
+  printf ("window fit;\n");
+  }                                    //close output file
+  }                                    //close the board
+//
+//   The script has been all written.  FNAM is the complete pathname of the
+//   script file.
+//
+cmd = "script " + fnam + ";";          //make command to execute the temp script file
+exit (cmd);                            //exit ULP and run the script we just wrote

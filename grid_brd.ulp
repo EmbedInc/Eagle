@@ -1,0 +1,556 @@
+#usage "<b><h1>Set up for making board drawings</h1></b>\n"
+  "<p>"
+  "Adds horizontal and vertical tick marks at the bottom and left "
+  "board edges.&nbsp;  The scale on the grid marks matches the coordinates "
+  "created by INDEX.ULP."
+  "<p>"
+  "This ULP will write the legend for both the top and bottom view "
+  "drawings.&nbsp;  Use the scripts GRID_TOP and GRID_BOT to select "
+  "the specific view for a drawing."
+
+string fnam;                           //output file name
+int ix, iy;                            //current tick coordinate, .1 inches
+int tn;                                //0-9 tick mark within inch
+real tx, ty;                           //real current tick coordinate
+real tlen;                             //length of this tick mark
+int ixlft, ixrit, iybot, iytop;        //board extents in native integer units
+real xlft, xrit;                       //X limits to draw tick marks over, inches
+real ybot, ytop;                       //Y limits to draw tick marks over, inches
+string cmd;                            //command to execute after this ULP finishes
+int i;                                 //scratch integer and loop counter
+real r;                                //scratch floating point
+real m;                                //mult factor
+string name;                           //board name
+int sytime;                            //system time, private format
+int year;                              //full year number
+string month;                          //full month name
+int day;                               //1-N day of the month
+real xf[] = {1, 0, 0, 1, 0, 0};        //2D transform, init to identity
+
+//******************************************************************************
+//
+//   Subroutine XFORM_MOVE (DX, DY)
+//
+//   Translate (move) the current global 2D transform in XF by DX,DY.
+//
+void xform_move (                      //move 2D transform
+  real dx,
+  real dy) {
+
+xf[4] = xf[4] + dx;
+xf[5] = xf[5] + dy;
+}
+
+//******************************************************************************
+//
+//   Subroutine XFORM_ROT (ANG)
+//
+//   Rotate the current global 2D transform in XF by ANG degrees
+//   counter-clockwise.
+//
+void xform_rot (                       //rotate 2D transform
+  real ang) {
+
+real s;                                //sine of angle
+real c;                                //cosine of angle
+real x, y;                             //transformed basis vector
+
+s = sin(ang);                          //get and save sine and cosine
+c = cos(ang);
+
+x = xf[0]*c - xf[1]*s;                 //make new X basis vector
+y = xf[0]*s + xf[1]*c;
+xf[0] = x;                             //update the global copy
+xf[1] = y;
+
+x = xf[2]*c - xf[3]*s;                 //make new Y basis vector
+y = xf[2]*s - xf[3]*c;
+xf[2] = x;                             //update the global copy
+xf[3] = y;
+}
+
+//******************************************************************************
+//
+//   Function XFORMX (X, Y)
+//
+//   Return the X coordinate of the point X,Y transformed by the current global
+//   2D transform in XF.
+//
+real xformx (
+  real x,
+  real y) {
+
+return x*xf[0] + y*xf[2];
+}
+
+//******************************************************************************
+//
+//   Function XFORMXI (X, Y)
+//
+//   Return the integer X coordinate of the point X,Y transformed by the current
+//   global 2D transform in XF.
+//
+real xformxi (
+  real x,
+  real y) {
+
+return int(round(xformx(x,y)));
+}
+
+//******************************************************************************
+//
+//   Function XFORMY (X, Y)
+//
+//   Return the Y coordinate of the point X,Y transformed by the current global
+//   2D transform in XF.
+//
+real xformy (
+  real x,
+  real y) {
+
+return x*xf[1] + y*xf[3];
+}
+
+//******************************************************************************
+//
+//   Function XFORMYI (X, Y)
+//
+//   Return the integer Y coordinate of the point X,Y transformed by the current
+//   global 2D transform in XF.
+//
+real xformyi (
+  real x,
+  real y) {
+
+return int(round(xformy(x,y)));
+}
+
+//******************************************************************************
+//
+//   Subroutine EXTENT_POINT_RAW (X, Y)
+//
+//
+//   Update the board extent limits XLFT, XRIT, YBOT, and YTOP to include the
+//   point X,Y.  No transformation is applied.  Point X,Y must already be in
+//   absolute board coordinates.
+//
+void extent_point_raw (                //update board extents to include point
+  int x,                               //the point in absolute board coodinates
+  int y) {
+
+ixlft = min(ixlft, x);
+ixrit = max(ixrit, x);
+iybot = min(iybot, y);
+iytop = max(iytop, y);
+}
+
+//******************************************************************************
+//
+//   Subroutine EXTENT_POINT (X, Y)
+//
+//   Update the board extent limits XLFT, XRIT, YBOT, and YTOP to include the
+//   point X,Y.  The limits are updated with the point X,Y transformed thru the
+//   current global 2D transform in XF.
+//
+void extent_point (                    //update board extents to include point
+  int x,                               //point in current 2D space defined by XF
+  int y) {
+
+extent_point_raw (xformxi(x, y), xformyi(x, y));
+}
+
+//******************************************************************************
+//
+//   Subroutine EXTENT_WIRE (WIRE)
+//
+//   Update the board extent limits XLFT, XRIT, YBOT, and YTOP to include the
+//   wire.
+//
+//   The extents are updated on the coordinates with the current global 2D
+//   transform applied.
+//
+void extent_wire (                     //update board extents to include wire
+  UL_WIRE wire) {
+
+if (wire.layer == LAYER_DIMENSION) {   //this primitive is in the DIMENSION layer ?
+  extent_point (wire.x1, wire.y1);
+  extent_point (wire.x2, wire.y2);
+  }
+}
+
+//******************************************************************************
+//
+//   Subroutine EXTENT_CIRCLE (CIRC)
+//
+//   Update the board extent limits XLFT, XRIT, YBOT, and YTOP to include the
+//   circle.
+//
+//   The extents are updated on the coordinates with the current global 2D
+//   transform applied.
+//
+void extent_circle (                   //update board extents to include circle
+  UL_CIRCLE circ) {
+
+int cx, cy;                            //circle center in abs board coordinates
+
+if (circ.layer == LAYER_DIMENSION) {   //this primitive is in the DIMENSION layer ?
+  cx = xformxi (circ.x, circ.y);       //make center point in board coordinates
+  cy = xformyi (circ.x, circ.y);
+  extent_point_raw (cx + circ.radius, cy + circ.radius);
+  extent_point_raw (cx - circ.radius, cy - circ.radius);
+  }
+}
+
+//******************************************************************************
+//
+//   Subroutine EXTENT_RECTANGLE (RECT)
+//
+//   Update the board extent limits XLFT, XRIT, YBOT, and YTOP to include the
+//   rectangle.
+//
+//   The extents are updated on the coordinates with the current global 2D
+//   transform applied.
+//
+void extent_rectangle (                //update board extents to include rectangle
+  UL_RECTANGLE rect) {
+
+real xfsave[];                         //saved copy of global 2D transform
+
+if (rect.layer == LAYER_DIMENSION) {   //this primitive is in the DIMENSION layer ?
+  xfsave[0] = xf[0];                   //save 2D transform before modification
+  xfsave[1] = xf[1];
+  xfsave[2] = xf[2];
+  xfsave[3] = xf[3];
+  xfsave[4] = xf[4];
+  xfsave[5] = xf[5];
+  xform_rot (rect.angle);              //set up nested coordinate space
+
+  extent_point (rect.x1, rect.y1);     //update to all verticies
+  extent_point (rect.x1, rect.y2);
+  extent_point (rect.x2, rect.y1);
+  extent_point (rect.x2, rect.y2);
+
+  xf[0] = xfsave[0];                   //restore original 2D transform
+  xf[1] = xfsave[1];
+  xf[2] = xfsave[2];
+  xf[3] = xfsave[3];
+  xf[4] = xfsave[4];
+  xf[5] = xfsave[5];
+  }
+}
+
+//******************************************************************************
+//
+//   Subroutine EXTENT_POLYGON (POLY)
+//
+//   Update the board extent limits XLFT, XRIT, YBOT, and YTOP to include the
+//   polygon.
+//
+//   The extents are updated on the coordinates with the current global 2D
+//   transform applied.
+//
+void extent_polygon (                  //update board extents to include polygon
+  UL_POLYGON poly) {
+
+if (poly.layer == LAYER_DIMENSION) {   //this primitive is in the DIMENSION layer ?
+  poly.contours(wire) {
+    extent_wire (wire);
+    }
+  }
+}
+
+//******************************************************************************
+//
+//   Subroutine EXTENT_ELEMENT (ELE)
+//
+//   Update the board extent limits XLFT, XRIT, YBOT, and YTOP to include the
+//   element.
+//
+//   The extents are updated on the coordinates with the current global 2D
+//   transform applied.
+//
+void extent_element (                  //update board extents to include element
+  UL_ELEMENT ele) {
+
+real xfsave[];                         //saved copy of global 2D transform
+
+xfsave[0] = xf[0];                     //save 2D transform before modification
+xfsave[1] = xf[1];
+xfsave[2] = xf[2];
+xfsave[3] = xf[3];
+xfsave[4] = xf[4];
+xfsave[5] = xf[5];
+xform_move (ele.x, ele.y);             //make transform for nested elements
+
+ele.package.circles (circ) {
+  extent_circle (circ);
+  }
+ele.package.polygons (poly) {
+  extent_polygon (poly);
+  }
+ele.package.rectangles (rect) {
+  extent_rectangle (rect);
+  }
+ele.package.wires (wire) {
+  extent_wire (wire);
+  }
+
+xf[0] = xfsave[0];                     //restore original 2D transform
+xf[1] = xfsave[1];
+xf[2] = xfsave[2];
+xf[3] = xfsave[3];
+xf[4] = xfsave[4];
+xf[5] = xfsave[5];
+}
+
+//******************************************************************************
+//
+//   Subroutine SET_COLOR (INDEX, RED, GRN, BLU)
+//
+//   Write a command to the current output file to set the color at index
+//   INDEX in the current palette to the indicated red, green, and blue
+//   value.  REG, GRN, and BLU are floating point in the 0.0 to 1.0 range.
+//
+void set_color (                       //set color of one palette index
+  int index,                           //0-63 color index in current palette
+  real red,                            //desired color components in 0 to 1 scale
+  real grn,
+  real blu) {
+
+int icolor;                            //RGB merged into one value
+int ir, ig, ib;                        //red, green, blue colors in 0-255 scale
+
+ir = int(max(0.0, min(255.5, red * 256.0))); //make 0-255 integer color components
+ig = int(max(0.0, min(255.5, grn * 256.0)));
+ib = int(max(0.0, min(255.5, blu * 256.0)));
+icolor = (ir << 16) | (ig << 8) | ib;  //make merged 24 bit color descriptor
+printf ("set palette %u 0x%06X;\n", index, icolor);
+}
+
+//******************************************************************************
+//
+//   Subroutine LAYER_DARK (NAME, DARK)
+//
+//   Set the darkness of a layer.  NAME is the layer name or text string
+//   layer number.  DARK must be a value from 1 to 8.  This is a measure
+//   of how "heavy" the layer will be printed.  1 is the lightest and 8
+//   is full black.  There is no option for full white since that is the
+//   background color.
+//
+void layer_dark (                      //set the darkness of a layer
+  string name,                         //layer name or text string layer number
+  int dark) {                          //1-8 layer darkness, 8 is full black
+
+printf ("set color_layer %s %u;\n", name, 55 + dark);
+}
+
+//******************************************************************************
+//
+//   Executable code for main program.
+//
+board (brd) {                          //open the board
+  name = brd.name;                     //get full .BRD file pathname
+  sytime = filetime (name);            //get the last modified time of the board
+  name = filename (name);              //make the file leafname
+  name = filesetext (name, "");        //make just the generic name, no suffix
+  name = strupr (name);                //make final upper case board name
+
+  year = t2year(sytime);               //make the full year number
+  i = t2month(sytime);                 //make 0-11 month number
+  switch (i) {                         //make month name from month number
+    case 0: month = "Jan"; break;
+    case 1: month = "Feb"; break;
+    case 2: month = "Mar"; break;
+    case 3: month = "Apr"; break;
+    case 4: month = "May"; break;
+    case 5: month = "Jun"; break;
+    case 6: month = "Jul"; break;
+    case 7: month = "Aug"; break;
+    case 8: month = "Sep"; break;
+    case 9: month = "Oct"; break;
+    case 10: month = "Nov"; break;
+    case 11: month = "Dec"; break;
+    }
+  day = t2day(sytime);                 //make 1-N number of day within month
+//
+//   Set XLFT, XRIT, YBOT, and YTOP to the bounding box of the board
+//   in X and Y.
+//
+  ixlft = 2000000000;                  //init board extents to unknown
+  ixrit = -2000000000;
+  iybot = 2000000000;
+  iytop = -2000000000;
+
+  brd.elements (ele) {
+    extent_element (ele);              //update board extents to this element
+    }
+  brd.polygons (poly) {
+    extent_polygon (poly);             //update board extents to this polygon
+    }
+  brd.rectangles (rect) {
+    extent_rectangle (rect);
+    }
+  brd.wires (wire) {                   //loop thru all the lines defined in the board
+    extent_wire (wire);                //update board extents to this wire
+    }                                  //back to do next WIRE
+
+  if ((ixrit <= ixlft) || (iytop <= iybot)) { //board extents not fully set ?
+    printf ("Not able to find board extent from DIMENSION layer\n");
+    exit (EXIT_FAILURE);
+    }
+  ixlft = min(ixlft, 0);
+  iybot = min(iybot, 0);
+
+  xrit = ceil(u2inch(ixrit) * 10) / 10; //expand board extent to integer 1/10 inches
+  xlft = floor(u2inch(ixlft) * 10) / 10;
+  ytop = ceil(u2inch(iytop) * 10) / 10;
+  ybot = floor(u2inch(iybot) * 10) / 10;
+//
+//   Create a script that will do all the work of drawing the tick marks and
+//   prepare the board for printing.  Unfortunately, a ULP can't make any
+//   changes, which can only be done with a script.  A ULP can't even issue
+//   commands directly.  The only way for a ULP to change any of the data
+//   is to write a script, then cause it to be run after the ULP exits.
+//
+  fnam = argv[0];                      //init temp script name to full ULP pathname
+  fnam = filesetext (fnam, ".scr");    //make script file of same generic name
+  output (fnam, "wtD") {               //open temporary script output file
+    printf ("grid inch .0125 8;\n");   //set up the coordinate system and sizes
+    printf ("grid off;\n");
+    printf ("change width .0067;\n");  //2 pixels wide at 300 DPI
+    printf ("change size .075;\n");
+    printf ("change ratio 12;\n");
+    printf ("change align bottom left;\n");
+    printf ("change style continuous;\n");
+    printf ("layer 199 grid;\n");      //make sure our private GRID layer exists
+
+    printf ("display none;\n");        //display only selected layers for printing
+    printf ("display 1;\n");
+    printf ("display Pads;\n");
+    printf ("display Vias;\n");
+    printf ("display Dimension;\n");
+    printf ("display tPlace;\n");
+    printf ("display tNames;\n");
+    printf ("display tValues;\n");
+    printf ("display tKeepout;\n");
+    printf ("display bPlace;\n");
+    printf ("display bNames;\n");
+    printf ("display bValues;\n");
+    printf ("display bKeepout;\n");
+    printf ("display Document;\n");
+    printf ("display tDocu;\n");
+    printf ("display grid;\n");
+    printf ("display -tOrigins;\n");
+    //
+    //   Draw the X tick marks along the bottom.
+    //
+    ty = ybot - 0.1;                   //set Y of X tick marks
+    ix = (xlft * 10) - 1;              //init to before first tick mark
+    do {                               //once for each X tick mark
+      ix++;                            //advance to next tick
+      tx = ix / 10.0;                  //make true tick mark X coordinate
+      tn = abs(ix % 10);               //make 0-9 tick mark ID within inch
+      tlen = .02;                      //init tick length for minor tick
+      if (tn == 5) tlen = .04;         //.5 inch tick is a little longer
+      if (tn == 0) tlen = .05;         //major tick mark
+      printf ("change layer Document;\n"); //draw tick mark in DOCUMENT layer
+      printf ("wire (%f %f) (%f %f);\n", tx, ty, tx, ty-tlen); //draw this tick mark
+      if (tn == 0) {                   //write a label at this tick ?
+        printf ("text '%d' (%f %f);\n", int(tx), tx - 0.03, ty - tlen - 0.10);
+        }
+      printf ("change layer grid;\n"); //full grid lines go into the GRID layer
+      printf ("wire (%f %f) (%f %f);\n", tx, ty, tx, ytop+0.0125);
+      } while (tx < xrit);
+    printf ("change layer Document;\n");
+    printf ("wire (%f %f) (%f %f);\n", tx, ty, xlft, ty); //draw horizontal line
+    //
+    //   Draw the Y tick marks along the left edge.
+    //
+    tx = xlft - 0.1;                   //set X of Y tick marks
+    iy = (ybot * 10) -1;               //init to before first tick mark
+    do {                               //once for each Y tick mark
+      iy++;                            //advance to next tick
+      ty = iy / 10.0;                  //make true tick mark Y coordinate
+      tn = abs(iy % 10);               //make 0-9 tick mark ID within inch
+      tlen = .02;                      //init tick length for minor tick
+      if (tn == 5) tlen = .04;         //.5 inch tick is a little longer
+      if (tn == 0) tlen = .05;         //major tick mark
+      printf ("change layer Document;\n"); //draw tick mark in DOCUMENT layer
+      printf ("wire (%f %f) (%f %f);\n", tx, ty, tx-tlen, ty); //draw this tick mark
+      if (tn == 0) {                   //write a label at this tick ?
+        printf ("text '%d' r180 (%f %f);\n",
+          int(ty), tx - tlen - 0.02, ty + 0.04);
+        }
+      printf ("change layer grid;\n"); //full grid lines go into the GRID layer
+      printf ("wire (%f %f) (%f %f);\n", tx, ty, xrit+0.0125, ty);
+      } while (ty < ytop);
+    printf ("change layer Document;\n");
+    printf ("wire (%f %f) (%f %f);\n", tx, ty, tx, ybot); //draw vertical line
+//
+//   Write the legends for this drawing.  Various parts will be drawn into
+//   the tDocu, bDocu, and Document layers, depending on whether they should
+//   show up in the top side drawing, bottom side, or both.
+//
+    printf ("change layer Document;\n");
+    printf ("text 'Board %s, %u %s %u, dimensions in inches' r0 (%f %f);\n",
+      name, day, month, year, xlft, ybot - 0.4);
+
+    printf ("change layer tDocu;\n");
+    printf ("text 'Top side' r0 (%f %f);\n",
+      xlft, ybot - 0.5);
+
+    printf ("change layer bDocu;\n");
+    printf ("text 'Bottom side, viewed from top' r0 (%f %f);\n",
+      xlft, ybot - 0.5);
+//
+//   Set up other properties suitable for printing the board and the grid
+//   lines so that components can be found with the use of the components
+//   index (see INDEX ULP).
+//
+//   All the layers intended to be printed will be switched to the last
+//   8 colors in the palette.  Note that the WHITE palette is always used
+//   for printing.  The last 8 colors are 56 - 63.  These will be set up
+//   from lightest to darkest.
+//
+    printf ("set palette white;\n");   //display same palette used for printing
+
+    r = 0.07;                          //init to starting value
+    m = pow ((1.0 / r) , 1.0 / 7.0);   //make mult factor for successive values
+    for (i = 56; i <= 63; i++) {       //once for each intermediate color
+      set_color (i, 1.0-r, 1.0-r, 1.0-r); //set this palette entry
+      r *= m;                          //update to next value
+      }
+
+    layer_dark ("1", 3);               //set the appearance of each enabled layer
+    layer_dark ("16", 3);
+    layer_dark ("tKeepout", 4);
+    printf ("set fill_layer tKeepout CloseDot;\n");
+    layer_dark ("bKeepout", 4);
+    printf ("set fill_layer bKeepout CloseDot;\n");
+    layer_dark ("Pads", 3);
+    layer_dark ("Vias", 3);
+    layer_dark ("Holes", 8);
+    layer_dark ("Dimension", 8);
+    layer_dark ("tPlace", 6);
+    layer_dark ("tNames", 6);
+    layer_dark ("tValues", 6);
+    layer_dark ("bPlace", 6);
+    layer_dark ("bNames", 6);
+    layer_dark ("bValues", 6);
+    layer_dark ("Document", 8);
+    layer_dark ("tDocu", 8);
+    layer_dark ("bDocu", 8);
+    layer_dark ("grid", 1);
+
+    printf ("window fit;\n");          //resize and refresh the display
+    printf ("set polygon_ratsnest on;\n"); //force polygons to be displayed filled
+    printf ("ratsnest;\n");
+    printf ("script grid_top;\n");     //set palette to display top view
+    }                                  //close the script output file
+  }                                    //close the board
+//
+//   The script has been all written.  FNAM is the complete pathname of the
+//   script file.
+//
+cmd = "script " + fnam;                //make command to execute the temp script file
+exit (cmd);                            //exit ULP and run the script we just wrote

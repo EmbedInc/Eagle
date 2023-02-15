@@ -1,0 +1,71 @@
+//   Build the ULP files in this repository.  These are copied into the
+//   ~/eagle/ulp directory, if it exists.
+//
+const sourcedir string = "(cog)source/eagle"
+
+var new destdir string       //destination directory
+var new dest string          //destination file name
+var new gnam string          //generic name of file
+
+//   Set DESTDIR to the destination directory.  This is (cog)eagle/ulp.  It is
+//   created if not already existing.
+//
+block                        //set DESTDIR
+  set destdir [tnam "~/eagle/ulp"] //try user's private EAGLE/ULP dir
+  if [exist destdir fnam] then
+    quit
+    endif
+
+  set destdir [tnam "(cog)eagle/ulp"] //try Embed EAGLE/ULP dir
+  if [exist destdir fnam] then
+    quit
+    endif
+
+  set destdir [tnam "(cog)eagle"] //try Embed EAGLE dir
+  if [exist destdir fnam] then
+    dir destdir
+    dir existgo "ulp"
+    set destdir [dir]
+    quit
+    endif
+
+  set destdir [tnam "(cog)"] //start at Embed dir
+  if [not [exist destdir fnam]] then
+    show "Embed software not installed, or the installation is corrupted."
+    stop 3
+    endif
+  dir destdir
+  dir existgo eagle
+  dir existgo ulp
+  set destdir [dir]
+  endblock
+
+show
+show "Installing ULPs to """ destdir """"
+
+//   Loop thru all the files in this directory.  Install the ".ulp" files.
+//
+dir sourcedir
+loop dir "." file
+  var local s string         //scratch string
+  var local l integer        //length of directory entry
+
+  set l [slen [dent]]
+  //
+  //   Ignore this file if not .ULP
+  //
+  set gnam [lnam [dent] ".ulp"]
+  if [= [slen gnam] [slen [dent]]] then
+    repeat
+    endif
+  //
+  //   Install this file.
+  //
+  set dest [str destdir "/" [dent]] //make destination file name
+  if [exist dest fnam] then  //destination file already exists ?
+    if [= [file dtm dest] [file dtm [dent]]] then //same file ?
+      repeat
+      endif
+    endif
+  run "copyt.exe -from " [dent] " -to " dest
+  endloop

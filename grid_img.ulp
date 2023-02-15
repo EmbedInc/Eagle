@@ -1,0 +1,32 @@
+#usage "<b><h1>Make the board drawing raw image files</h1></b>\n"
+  "<p>"
+  "To make the board drawings:<ol> "
+  "<p><li>Run GRID_BRD on the board. "
+  "<p><li>Save the board to GRID.BRD before doing anything else.  This "
+  "avoids corrupting the actual board. "
+  "<p><li>Add annotation, assembly notes, etc, to make final drawings. "
+  "<p><li>Run this ULP. "
+  "<p><li>Outside of Eagle, run the script EAGLE_IMG in the directory with "
+  "the Eagle files for this board. "
+  "</ol>"
+
+string scr;                       //script to be executed when this ULP exits
+
+//******************************************************************************
+//
+//   Executable code for main program.
+//
+  system (                        //make sure the temporary files don't exist
+    "cmd /c if exist c:\\temp\\top.tif del c:\\temp\\top.tif");
+  system (
+    "cmd /c if exist c:\\temp\\bot.tif del c:\\temp\\bot.tif");
+
+  scr = filesetext (argv[0], ".scr"); //make script file of same generic name
+  output (scr, "wtD") {           //open temporary script output file
+    printf ("script grid_top;\n");
+    printf ("export image c:\\temp\\top.tif 600;\n");
+    printf ("script grid_bot;\n");
+    printf ("export image c:\\temp\\bot.tif 600;\n");
+    }                             //done writing the script
+
+  exit ("script " + scr);         //exit ULP and run the script we just wrote

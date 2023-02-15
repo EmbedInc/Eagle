@@ -1,0 +1,22 @@
+#usage "<b><h1>Go to previous schematic sheet</h1></b>\n"
+
+int oldsheet;                     //1-N number of the current sheet
+string cmd;                       //command to execute on exit
+
+//
+//   Start of main program.
+//
+  sheet (sh) {                    //open the current sheet
+    oldsheet = sh.number;         //get the 1-N number of the current sheet
+    }
+
+
+  if (oldsheet > 1)
+    {                             //there is a sheet to advance to
+      sprintf (cmd, "edit .s%d;\n", oldsheet - 1);
+      exit (cmd);
+      }
+    else {                        //already at first sheet
+      exit (EXIT_SUCCESS);        //do nothing
+      }
+    ;

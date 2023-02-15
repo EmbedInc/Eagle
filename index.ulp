@@ -1,0 +1,116 @@
+#usage "<b><h1>Create index of parts on schematic and board</h1></b>\n"
+  "<p>"
+  "Creates an index of part designators showing their location "
+  "on the schematic and board."
+
+//******************************************************************************
+//
+//   Function SHEET_COOR (X, Y)
+//
+//   Creates the two character designator for a coordinate within a schematic
+//   sheet.  X,Y is the coordinate within the sheet in native Eagle form.  The
+//   result will be two characters, with the first being an upper case letter
+//   and the second being a digit.  The letter indicates the column with A-Z
+//   going from left to right.  The digit indicates the row, with 1-9 going up
+//   the page.  This is just like the coordinate designation on maps for finding
+//   a particular feature from the index.  It is not intended to provide precise
+//   placement information, but rather help someone find a part on the schematic
+//   quickly.
+//
+//   The results of this subroutine are compatible with the schematic sheet
+//   frames with row and column coordinates printed along the edges.  Examples
+//   of such sheet frames are FRAME-8X10-XY-H and FRAME-8X10RAW-XY-H in the
+//   SYMBOLS library.
+//
+string sheet_coor (
+  int x,
+  int y) {
+
+int ix, iy;                            //coordinates converted to column/row numbers
+string s;                              //the returned string
+
+ix = int(u2inch(x)) + 1;               //make 1-N column number
+iy = int(u2inch(y)) + 1;               //make 1-N row number
+sprintf (s, "%c%u", 'A' + ix - 1, iy);
+return s;
+}
+
+//******************************************************************************
+//
+//   Start of main program.
+//
+string fnam;                           //output file name
+string gnam;                           //generic project name
+string ugnam;                          //upper case generic project name
+string name;                           //scratch object name string
+int ninst;                             //number of schematic instances of a part
+string scoor;                          //schematic letter/number coordinate
+string bcoor;                          //board X.XX Y.YY coordinate
+
+project.schematic (sch) {              //open the schematic
+project.board (brd) {                  //open the board
+  fnam = sch.name;                     //get initial output file name from schematic
+  fnam = filesetext (fnam, "");        //remove .SCH file name suffix
+  fnam = fnam + "_index";              //add to base name to indicate new file type
+  fnam = filesetext (fnam, ".txt");    //change to .TXT file type
+  fnam =                               //get output file name from user
+    dlgFileSave ("Enter the output file name", fnam, "");
+  if (strlen(fnam) == 0) {             //no output file given ?
+    exit (EXIT_FAILURE);
+    }
+  gnam = filename(filesetext(sch.name, ""));
+  ugnam = strupr(gnam);                //make upper case generic project name
+//
+//   The complete output file name is in FNAM.
+//
+  output (fnam, "wt") {                //open the output file for text write
+    printf ("Part locator index for board %s.\n\n", ugnam);
+    printf ("Part  Schem  Schem    Board    Board\n");
+    printf ("name   page   coor   X (in)   Y (in)\n\n");
+    sch.parts (prt) {                  //open list of parts in schematic
+      name = prt.name;                 //make string copy of part name
+      if ((name[0] == 'U') && (name[1] == '$')) { //hidden symbol ?
+        break;                         //ignore hidden symbols
+        }
+      ninst = 0;                       //init instance counter
+      prt.instances (ins) {            //loop thru each instance of this part
+        if (ins.sheet == 0) continue;  //this instance not used ?
+        ninst++;                       //count one more instance
+        }
+      if (ninst == 0) break;           //whole part not used (shouldn't happen)
+
+      bcoor = "";                      //init board coordinates to the empty string
+      brd.elements (ele) {             //loop thru the elements on the board
+        if (ele.name != name) continue; //not the element we are looking for ?
+        sprintf (bcoor, "%9.3f%9.3f", u2inch(ele.x), u2inch(ele.y));
+        break;                         //found element, don't look further
+        }                              //back for next board element
+
+      if (ninst == 1)
+        {                              //single instance of this part
+          prt.instances (ins) {        //loop thru each schematic instance
+            if (ins.sheet == 0) continue; //this instance not used ?
+            printf ("%-7s", ins.name);
+            printf ("%4u", ins.sheet);
+            printf ("%7s", sheet_coor(ins.x, ins.y));
+            printf ("%s", bcoor);
+            printf ("\n");
+            }                          //back for next schematic instance
+          }
+        else {                         //multiple instances of part in schematic
+          printf ("%-7s", name);
+          printf ("           %s", bcoor);
+          printf ("\n");
+          prt.instances (ins) {        //loop thru each schematic instance
+            if (ins.sheet == 0) continue; //this instance not used ?
+            printf ("%-7s", ins.name);
+            printf ("%4u", ins.sheet);
+            printf ("%7s", sheet_coor(ins.x, ins.y));
+            printf ("\n");
+            }                          //back for next schematic instance
+          }
+        ;
+      }                                //back to do next part in schematic
+    }                                  //close the output file
+  }                                    //close the schematic
+  }                                    //close the board

@@ -1,0 +1,22 @@
+#usage "<b><h1>Makes B+W image of current window contents.</h1></b>\n"
+  "<p>"
+  "The contents of the current editor window (intended for schematics) is "
+  "written to the image file /temp/a.tif.  The image will be black and white "
+  "written at 600 DPI.  This is suitable for then running the MAKE_SCHEM_GIF "
+  "script afterwards."
+
+string scr;                       //script to be executed when this ULP exits
+
+//******************************************************************************
+//
+//   Executable code for main program.
+//
+  system (                        //make sure the temporary file doesn't exist
+    "cmd /c if exist c:\\temp\\a.tif del c:\\temp\\a.tif");
+
+  scr = filesetext (argv[0], ".scr"); //make script file of same generic name
+  output (scr, "wtD") {           //open temporary script output file
+    printf ("export image c:\\temp\\a.tif monochrome 600;\n");
+    }                             //done writing the script
+
+  exit ("script " + scr);         //exit ULP and run the script we just wrote
