@@ -1,7 +1,7 @@
 {   Program CSV_BOM filename
 *
-*   This program is used as one step in producing a bill of materials (BOM)
-*   from an Eagle design.  See the documentation file for details.
+*   This program is used as one step in producing a bill of materials (BOM) from
+*   an Eagle design.  See the documentation file for details.
 }
 program csv_bom;
 %include 'sys.ins.pas';
@@ -18,7 +18,8 @@ type
   pflag_k_t = (                        {flags for individial parts}
     pflag_comm_k,                      {common part, not first in common part chain}
     pflag_nobom_k,                     {do not add this part to the BOM}
-    pflag_subst_k);                    {OK to substitute part with equivalent}
+    pflag_subst_k,                     {OK to substitute part with equivalent}
+    pflag_isafe_k);                    {critical to Intrinsic Safety}
   pflag_t = set of pflag_k_t;
 
   part_p_t = ^part_t;
@@ -455,6 +456,9 @@ infile_bad:
   getfield (tk);
   string_upcase (tk);
   if not string_equal (tk, string_v('INHOUSE')) then goto infile_bad;
+  getfield (tk);
+  string_upcase (tk);
+  if not string_equal (tk, string_v('IS')) then goto infile_bad;
 
   if p <= buf.len then goto infile_bad; {additional unexpected field ?}
 {
@@ -635,6 +639,27 @@ otherwise
       string_copy (tk3, part_p^.housenum); {save the in-house part number}
       exit;                            {no point looking further}
       end;
+    end;
+
+  getfield (tk);                       {get YES/NO critical to Intrinsic Safety}
+  string_upcase (tk);                  {make upper case for keyword matching}
+  if tk.len <= 0 then begin            {no value, use default ?}
+    string_vstring (tk, 'YES'(0), -1);
+    end;
+  string_tkpick80 (tk,                 {determine which BOM keyword}
+    'YES NO',
+    pick);
+  case pick of
+1:  begin                              {SUBST YES}
+      part_p^.flags := part_p^.flags + [pflag_isafe_k];
+      end;
+2:  begin                              {SUBST NO}
+      part_p^.flags := part_p^.flags - [pflag_isafe_k];
+      end;
+otherwise
+    sys_msg_parm_vstr (msg_parm[1], tk);
+    sys_msg_parm_vstr (msg_parm[2], part_p^.desig);
+    sys_message_bomb ('stuff', 'bom_is_bad', msg_parm, 2);
     end;
 
   goto loop_line;                      {back to get next input line}

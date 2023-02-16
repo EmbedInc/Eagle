@@ -1,0 +1,139 @@
+                             Eagle Attributes
+                             16 February 2023
+
+
+This document describes the Embed Inc conventions for using optional
+attributes in Eagle, which were first made available in version 5.  In
+previous versions a part could only have a few fixed attributes built into
+Eagle, such as VALUE and NAME.  In version 5 these fixed attributes still
+exist but arbitrary additional attributes can be created by the user.
+
+This document specifies certain attributes that are expected by parts of
+the Embed Inc system, mostly to aid in automatic bill of materials (BOM)
+generation.  The process of generating a BOM from an eagle board or
+schematic is desribed in the CSV_BOM program documentation file.
+
+The Eagle optional attributes that have special meaning within the Embed
+Inc system are:
+
+  MANUF
+
+    Manufacturer:partnum; manufacturer:partnum; ...
+
+    The PARTNUM fields and their leading colons may be omitted, but is a
+    bad idea unless only a single manufacturer is listed.
+
+  PARTNUM
+
+    Generic part number or part number within single manufacturer.
+
+  SUPPLIER
+
+    Supplier:partnum; supplier:partnum; ...
+
+    The PARTNUM fields and their leading colons may be omitted, but is a
+    bad idea unless only a single supplier is listed.
+
+  INHOUSE
+
+    Housename:partnum; Housename:partnum; ...
+
+    Defines in-house or private part numbers within a list of
+    organizations.  Each HOUSENAME is the name of an organization, and
+    PARTNUM is the internal part number private to that organization.
+
+  QTY
+
+    Specifies the part quantity per single use.  In most cases, like
+    resistors and capacitors, each component in the schematic or board
+    uses 1 item.  However, some "parts" like a fuse are really a pair of
+    board-mounted fuse clips.  Since two clips per fuse need to be bought
+    and installed, QTY should be set to 2 in that case.
+
+    QTY, when present, must be either empty or a numeric value.  When not
+    present or the empty string, the default is 1.
+
+  BOM
+
+    Whether this part should be included on the BOM.  Some "parts" are
+    only features on the board, like pogo pin pads for example.  These
+    should not be listed on the BOM because they do not need to be bought
+    and will not be installed.  Supported values are:
+
+      YES
+
+        Include this part in the BOM.  This is the default if the part has
+        a package.
+
+      NO
+
+        Do not include this part in the BOM.  This is the default if the
+        part does not have a package.
+
+  VALSTAT
+
+    Indicates how the VALUE attribute is used.  The choices are:
+
+      VAL
+
+        Normal part value, like the resistance of a resistor.  The part
+        value will be listed on the BOM and used to distinguish different
+        parts.  For example, a 10 kOhm resistor is a different part than a
+        330 Ohm resistor.
+
+      PARTNUM
+
+        The part number.  The value field will be shown in the BOM and
+        used to distinguish different parts, like VAL.  However, the part
+        number field will be set to VALUE unless the part number is
+        otherwise explicitly set.  VALSTAT PARTNUM is for generic library
+        devices where the value field is used to show some or all of the
+        part number on the schematic.  For example, the library might
+        contain a generic 14 pin opamp device, and the value set to LM324
+        to show the type of opamp on the schematic.  In this example,
+        VALUE is only set to the generic part number without package type,
+        temperature grade, etc.  In this case the PARTNUM attribute should
+        be used to specify the exact part number, but VALSTAT should still
+        be set to PARTNUM.
+
+      LABEL
+
+        Label intended for the silkscreen.  The value field will not be
+        transferred to the BOM and will not be used to differentiate
+        parts.  This might be used, for example, to label an LED on the
+        board.  Different LEDs might be labeled "Power" and "Error", but
+        they are the same physical part and should be listed on the same
+        BOM entry.
+
+  SUBST
+
+    Sets the substutions allowed field for the part on the BOM.  Valid
+    values are "YES" and "NO".  The default is YES if SUBST does not exist
+    or is empty.
+
+  DESC
+
+    Explicit description string for the BOM.  By default, the BOM
+    description is derived from the library name and the device name
+    within that library.  If the DESC attribute is present and not empty,
+    its contents will override that default.
+
+  DVAL
+
+    Detailed part value.  If present and not empty, this field overrides
+    the part value string on the BOM and will be used to differentiate
+    parts.  DVAL is always assumed to be the true part value, so is not
+    effected by VALSTAT.  The purpose of DVAL is to provide more
+    information than reasonable to show on the schematic.  Generally the
+    standard VALUE attribute will be shown on the schematic with DVAL
+    shown on the BOM.
+
+  IS
+
+    Indicates whether the part is critical for Intrinsic Safety.  Valid
+    values are "YES" and "NO".  The default is NO if IS does not exist or
+    is empty.
+
+    Marking a part as critical to intrinsic safety may cause it to be
+    shown differently in some BOM views, as may be required by Intrinsic
+    Safety certification.

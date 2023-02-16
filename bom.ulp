@@ -72,7 +72,7 @@ fnam = filesetext (fnam, ".csv");      //change to .CSV file type
 output (fnam, "wt") {                  //open the output file for text write
   project.schematic (sch) {            //open the schematic
     printf (
-      "designator, library, device, value, package, MANUF, PARTNUM, SUPPLIER, VALSTAT, BOM, SUBST, DESC, DVAL, QTY, INHOUSE\n");
+      "designator, library, device, value, package, MANUF, PARTNUM, SUPPLIER, VALSTAT, BOM, SUBST, DESC, DVAL, QTY, INHOUSE, IS\n");
     sch.parts (prt) {                  //open list of parts in schematic
       name = prt.name;                 //make string copy of part name
       show = 1;                        //init to show this part
@@ -104,6 +104,7 @@ output (fnam, "wt") {                  //open the output file for text write
         write_field (prt.attribute["DVAL"]);
         write_field (prt.attribute["QTY"]);
         write_field (prt.attribute["INHOUSE"]);
+        write_field (prt.attribute["IS"]);
         printf ("\n");
         }                              //done writing this part to output file
       }                                //back to do next part in schematic
