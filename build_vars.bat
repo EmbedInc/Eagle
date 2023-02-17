@@ -5,7 +5,7 @@ rem
 set srcdir=eagle
 set buildname=
 call treename_var "(cog)source/eagle" sourcedir
-set libname=
+set libname=eagle
 set fwname=
 set pictype=
 set picclass=
