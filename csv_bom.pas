@@ -469,6 +469,9 @@ infile_bad:
   last_p := nil;
   np := 0;                             {init total number of parts read}
 {
+*   The first line of the CSV input file has been read and verified.  The parts
+*   list has been initialized to empty.
+*
 ****************************************
 *
 *   Read the input file and create the list of individual parts.
@@ -644,7 +647,7 @@ otherwise
   getfield (tk);                       {get YES/NO critical to Intrinsic Safety}
   string_upcase (tk);                  {make upper case for keyword matching}
   if tk.len <= 0 then begin            {no value, use default ?}
-    string_vstring (tk, 'YES'(0), -1);
+    string_vstring (tk, 'NO'(0), -1);
     end;
   string_tkpick80 (tk,                 {determine which BOM keyword}
     'YES NO',
@@ -688,7 +691,8 @@ eof:                                   {end of input file encountered}
 *
 ****************************************
 *
-*   Build the list of reference parts.
+*   Read the parts reference file, if it exists, and build the list of reference
+*   parts.
 }
   partref_list_init (refparts, mem_p^); {init reference parts list}
   partref_read_csv (
@@ -699,8 +703,10 @@ eof:                                   {end of input file encountered}
   sys_error_abort (stat, '', '', nil, 0);
   writeln (refparts.nparts, ' reference parts found');
 {
+****************************************
+*
 *   Scan the list of parts and compare each to the reference parts.  Fill in
-*   other data from the reference part definition if all other fields match.
+*   data from the reference part definition if the part matches the reference.
 }
   part_p := first_p;                   {init to first part in list}
   while part_p <> nil do begin         {once for each part in the list}
@@ -836,7 +842,7 @@ doneref:                               {done with this ref part}
 {
 ****************************************
 *
-*   For each part, attempt to fill in some of the fields from other fields.
+*   For each part, attempt to fill in some empty fields from other fields.
 }
   part_p := first_p;                   {init to current part is first in list}
   while part_p <> nil do begin         {once for each part in the list}
@@ -911,7 +917,8 @@ next_comp:                             {done with current component}
 {
 ****************************************
 *
-*   Write the information in the parts list to the output file.
+*   Write the <name>_BOM.TSV file.  This is the BOM ready to import into a
+*   spreadsheet.
 }
   string_pathname_join (dir, conn.gnam, fnam); {make pathname of the output file}
   file_open_write_text (fnam, '_bom.tsv', conn, stat); {open output file}
@@ -1265,6 +1272,154 @@ next_part:                             {done processing the current part}
     fnam,                              {destination file name}
     [file_copy_replace_k],             {overwrite existing file, if any}
     stat);
+  sys_error_abort (stat, '', '', nil, 0);
+{
+****************************************
+*
+*   Write the <name>_BOM.CSV file.  This is the bare BOM for reading by other
+*   applications.
+}
+  string_pathname_join (dir, conn.gnam, fnam); {build the output file name}
+  string_appends (fnam, '_bom'(0));
+  csv_out_open (fnam, cw, stat);       {open the CSV output file}
+  sys_error_abort (stat, '', '', nil, 0);
+  writeln ('Writing "', cw.conn.tnam.str:cw.conn.tnam.len, '"');
+{
+*   Write the header line.  This line contains the names of each field.
+}
+  csv_out_str (cw, 'Qty', stat); sys_error_abort (stat, '', '', nil, 0);
+  csv_out_str (cw, 'Designators', stat); sys_error_abort (stat, '', '', nil, 0);
+  csv_out_str (cw, 'Desc', stat); sys_error_abort (stat, '', '', nil, 0);
+  csv_out_str (cw, 'Value', stat); sys_error_abort (stat, '', '', nil, 0);
+  csv_out_str (cw, 'Package', stat); sys_error_abort (stat, '', '', nil, 0);
+  csv_out_str (cw, 'Subst', stat); sys_error_abort (stat, '', '', nil, 0);
+
+  if housename.len > 0
+    then begin                         {we have explicit name for in-house parts}
+      string_copy (housename, tk);     {init with house name}
+      string_appends (tk, ' #'(0));    {add "#"}
+      csv_out_vstr (cw, tk, stat);
+      sys_error_abort (stat, '', '', nil, 0);
+      end
+    else begin                         {no housename}
+      csv_out_str (cw, 'Inhouse #', stat);
+      sys_error_abort (stat, '', '', nil, 0);
+      end
+    ;
+
+  csv_out_str (cw, 'Manuf', stat); sys_error_abort (stat, '', '', nil, 0);
+  csv_out_str (cw, 'Manuf part #', stat); sys_error_abort (stat, '', '', nil, 0);
+  csv_out_str (cw, 'Supplier', stat); sys_error_abort (stat, '', '', nil, 0);
+  csv_out_str (cw, 'Supp part #', stat); sys_error_abort (stat, '', '', nil, 0);
+
+  csv_out_line (cw, stat); sys_error_abort (stat, '', '', nil, 0);
+{
+*   Scan thru the components list and write one output file line for each unique
+*   part.
+}
+  part_p := nil;                       {init to before all parts}
+  while true do begin                  {back here to go to next part}
+    if part_p = nil
+      then begin                       {currently before first part}
+        part_p := first_p;             {go to first part in list}
+        end
+      else begin                       {at an existing part}
+        part_p := part_p^.next_p;      {to next part in list}
+        end
+      ;
+    if part_p = nil then exit;         {hit end of list ?}
+
+    if pflag_nobom_k in part_p^.flags  {this part not to be added to the BOM ?}
+      then next;
+    if pflag_comm_k in part_p^.flags   {already on a previous line ?}
+      then next;
+    {
+    *   Quantity.
+    }
+    ii := round(part_p^.qty);          {make integer quantity}
+    if abs(part_p^.qty - ii) < 0.0001
+      then begin                       {quantity really is integer ?}
+        string_f_int (tk, ii);
+        end
+      else begin                       {quantity must be written with fraction digits}
+        string_f_fp_fixed (tk, part_p^.qty, 3);
+        end
+      ;
+    csv_out_vstr (cw, tk, stat);
+    sys_error_abort (stat, '', '', nil, 0);
+    {
+    *   Designators.
+    }
+    tk.len := 0;                       {init list of designators}
+    p2_p := part_p;                    {init to first part of this type}
+    while p2_p <> nil do begin         {once for each component of this type}
+      if p2_p^.desig.len > 0 then begin {this part has a designator ?}
+        if tk.len > 0 then begin       {not first designator in list ?}
+          string_append1 (tk, ' ');    {separator before new designator}
+          end;
+        string_append (tk, p2_p^.desig); {add this designator to list}
+        if pflag_isafe_k in p2_p^.flags then begin {critical to Intrinsic Safety ?}
+          string_append1 (tk, '*');
+          end;
+        end;
+      p2_p := p2_p^.same_p;            {advance to next component using this part}
+      end;
+    csv_out_vstr (cw, tk, stat);
+    sys_error_abort (stat, '', '', nil, 0);
+    {
+    *   Description.
+    }
+    csv_out_vstr (cw, part_p^.desc, stat);
+    sys_error_abort (stat, '', '', nil, 0);
+    {
+    *   Value.
+    }
+    csv_out_vstr (cw, part_p^.val, stat);
+    sys_error_abort (stat, '', '', nil, 0);
+    {
+    *   Package.
+    }
+    csv_out_vstr (cw, part_p^.pack, stat);
+    sys_error_abort (stat, '', '', nil, 0);
+    {
+    *   Substitute yes/no.
+    }
+    if pflag_subst_k in part_p^.flags
+      then string_vstring (tk, 'Yes'(0), -1)
+      else string_vstring (tk, 'No'(0), -1);
+    csv_out_vstr (cw, tk, stat);
+    sys_error_abort (stat, '', '', nil, 0);
+    {
+    *   Inhouse #
+    }
+    csv_out_vstr (cw, part_p^.housenum, stat);
+    sys_error_abort (stat, '', '', nil, 0);
+    {
+    *   Manufacturer.
+    }
+    csv_out_vstr (cw, part_p^.manuf, stat);
+    sys_error_abort (stat, '', '', nil, 0);
+    {
+    *   Manufacturer part #.
+    }
+    csv_out_vstr (cw, part_p^.mpart, stat);
+    sys_error_abort (stat, '', '', nil, 0);
+    {
+    *   Supplier.
+    }
+    csv_out_vstr (cw, part_p^.supp, stat);
+    sys_error_abort (stat, '', '', nil, 0);
+    {
+    *   Supplier part #.
+    }
+    csv_out_vstr (cw, part_p^.spart, stat);
+    sys_error_abort (stat, '', '', nil, 0);
+
+    csv_out_line (cw, stat);           {write this line to output file}
+    sys_error_abort (stat, '', '', nil, 0);
+    end;                               {back for next part in list}
+
+  csv_out_close (cw, stat);            {close the output file}
   sys_error_abort (stat, '', '', nil, 0);
 {
 ****************************************
