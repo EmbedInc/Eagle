@@ -40,6 +40,7 @@ begin
   egl_p^.inv := false;
   egl_p^.lastx := 0.0;
   egl_p^.lasty := 0.0;
+  egl_p^.scr_p := nil;
   end;
 {
 ********************************************************************************
@@ -56,11 +57,24 @@ procedure eagle_lib_end (              {end of use of the EAGLE library}
 
 var
   mem_p: util_mem_context_p_t;         {to new mem context for this lib use}
+  scr_p: eagle_scr_p_t;                {pointer to current script file writing state}
 
 begin
   sys_error_none (stat);               {init to no error encountered}
-
+{
+*   Close any script files open for write.
+}
+  while true do begin                  {loop until no more open script files}
+    scr_p := egl_p^.scr_p;             {get pointer to current start of list}
+    if scr_p = nil then exit;          {list is now empty ?}
+    eagle_scr_close (scr_p, stat);     {close this script file, remove from list}
+    if sys_error(stat) then return;
+    end;                               {back to close first in list again}
+{
+*   Deallocate all the dynamic memory of this library use.
+}
   mem_p := egl_p^.mem_p;               {save pointer to lib use mem context}
   util_mem_context_del (mem_p);        {del lib mem context, dealloc lib mem}
+
   egl_p := nil;                        {invalidate pointer to deleted lib use}
   end;
