@@ -30,17 +30,11 @@ begin
     sizeof(egl_p^), mem_p^, false, egl_p);
   if util_mem_grab_err (egl_p, sizeof(egl_p^), stat) then return;
 
-  egl_p^.mem_p := mem_p;
-  egl_p^.xf.xb.x := 1.0;
-  egl_p^.xf.xb.y := 0.0;
-  egl_p^.xf.yb.x := 0.0;
-  egl_p^.xf.yb.y := 1.0;
-  egl_p^.xf.ofs.x := 0.0;
-  egl_p^.xf.ofs.y := 0.0;
-  egl_p^.inv := false;
-  egl_p^.lastx := 0.0;
+  egl_p^.mem_p := mem_p;               {save pointer to our memory context}
+  eagle_xform_reset (egl_p^);          {reset the 2D transform to identity}
+  egl_p^.lastx := 0.0;                 {init last-written coordinate}
   egl_p^.lasty := 0.0;
-  egl_p^.scr_p := nil;
+  egl_p^.scr_p := nil;                 {init to not writing any script files}
   end;
 {
 ********************************************************************************

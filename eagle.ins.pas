@@ -25,6 +25,11 @@ type
 {
 *   Subroutines and functions.
 }
+function eagle_inch_mm (               {convert from inches to mm}
+  in      inch: real)                  {input in inches}
+  :real;                               {output in mm}
+  val_param; extern;
+
 procedure eagle_lib_end (              {end of use of the EAGLE library}
   in out  egl_p: eagle_p_t;            {library use state, returned NIL}
   out     stat: sys_err_t);            {completion status}
@@ -34,6 +39,11 @@ procedure eagle_lib_new (              {create new use of the EAGLE library}
   in out  mem: util_mem_context_t;     {parent mem context, will create subordinate}
   out     egl_p: eagle_p_t;            {returned pointer to the new library state}
   out     stat: sys_err_t);            {completion status}
+  val_param; extern;
+
+function eagle_mm_inch (               {convert from mm to inches}
+  in      mm: real)                    {input in mm}
+  :real;                               {output in inches}
   val_param; extern;
 
 procedure eagle_scr_char (             {write character to Eagle script file}
@@ -134,8 +144,47 @@ procedure eagle_scr_xy (               {write X,Y coor in Eagle format to script
   out     stat: sys_err_t);            {completion status}
   val_param; extern;
 
+procedure eagle_xform_get (            {get copy of current 2D transform}
+  in out  egl: eagle_t;                {state for use of this library}
+  out     xf: vect_xf2d_t);            {returned 2D transform}
+  val_param; extern;
+
+procedure eagle_xform_move (           {move model space origin, absolute}
+  in out  egl: eagle_t;                {state for use of this library}
+  in      x, y: real);                 {Eagle coordinates of model space origin}
+  val_param; extern;
+
+procedure eagle_xform_move_rel (       {move model space origin, relative}
+  in out  egl: eagle_t;                {state for use of this library}
+  in      x, y: real);                 {model space point that will be 0,0 after call}
+  val_param; extern;
+
 procedure eagle_xform_pnt (            {apply current 2D transform to a point}
   in out  egl: eagle_t;                {state for use of this library}
   in      x, y: real;                  {model space coordinate to transform}
   out     x2, y2: real);               {resulting Eagle space coordinate}
+  val_param; extern;
+
+procedure eagle_xform_reset (          {reset the 2D transform to the identity}
+  in out  egl: eagle_t);               {state for use of this library}
+  val_param; extern;
+
+procedure eagle_xform_rot (            {rotate, absolute, xform reset otherwise}
+  in out  egl: eagle_t;                {state for use of this library}
+  in      ang: real);                  {radians output rotation from input}
+  val_param; extern;
+
+procedure eagle_xform_rot_rel (        {rotate, relative}
+  in out  egl: eagle_t;                {state for use of this library}
+  in      ang: real);                  {radians new model space rotated left from old}
+  val_param; extern;
+
+procedure eagle_xform_scale_rel (      {scale, relative}
+  in out  egl: eagle_t;                {state for use of this library}
+  in      m: real);                    {scale factor, output will be M times larger}
+  val_param; extern;
+
+procedure eagle_xform_set (            {explicitly set whole 2D transform}
+  in out  egl: eagle_t;                {state for use of this library}
+  in      xf: vect_xf2d_t);            {new model to Eagle space transform}
   val_param; extern;
