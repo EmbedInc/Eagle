@@ -13,6 +13,7 @@ type
     egl_p: eagle_p_t;                  {to library use state}
     conn: file_conn_t;                 {connection to .SCR output file}
     buf: string_var8192_t;             {one line output buffer}
+    echout: boolean;                   {echo wcript writing to STDOUT}
     end;
 
   eagle_t = record                     {state for one use of EAGLE library}
@@ -100,6 +101,12 @@ procedure eagle_scr_close (            {close Eagle script output file}
 
 procedure eagle_scr_cmdend (           {";" command end and write line to script file}
   in out  scr: eagle_scr_t;            {script writing state}
+  out     stat: sys_err_t);            {completion status}
+  val_param; extern;
+
+procedure eagle_scr_echo_stdout (      {enable/disable echo script writing to STDOUT}
+  in out  scr: eagle_scr_t;            {script writing state}
+  in      echo: boolean;               {enable echoing to STDOUT}
   out     stat: sys_err_t);            {completion status}
   val_param; extern;
 

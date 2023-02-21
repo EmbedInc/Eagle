@@ -3,6 +3,7 @@
 module eagle_scr;
 define eagle_scr_open;
 define eagle_scr_close;
+define eagle_scr_echo_stdout;
 define eagle_scr_char;
 define eagle_scr_space;
 define eagle_scr_strv;
@@ -41,6 +42,7 @@ begin
   scr_p^.egl_p := addr(egl);
   scr_p^.buf.max := size_char(scr_p^.buf.str);
   scr_p^.buf.len := 0;
+  scr_p^.echout := false;
 
   file_open_write_text (               {open the script output file}
     fnam, '.scr',                      {file name and required suffix}
@@ -93,6 +95,24 @@ begin
     end;
 
   util_mem_ungrab (scr_p, egl_p^.mem_p^); {deallocate script writing state memory}
+  end;
+{
+********************************************************************************
+*
+*   Subroutine EAGLE_SCR_ECHO_STDOUT (SCR, ECHO, STAT)
+*
+*   Enable or disable echoing writing to the Eagle script open on SCR to STDOUT.
+}
+procedure eagle_scr_echo_stdout (      {enable/disable echo script writing to STDOUT}
+  in out  scr: eagle_scr_t;            {script writing state}
+  in      echo: boolean;               {enable echoing to STDOUT}
+  out     stat: sys_err_t);            {completion status}
+  val_param;
+
+begin
+  sys_error_none (stat);               {init to no error encountered}
+
+  scr.echout := echo;
   end;
 {
 ********************************************************************************
@@ -280,6 +300,10 @@ begin
     scr.buf.len := 0;                  {set its length to exactly 0}
     sys_error_none (stat);             {indicate no error encountered}
     return;
+    end;
+
+  if scr.echout then begin             {need to echo to STDOUT ?}
+    writeln (scr.buf.str:scr.buf.len);
     end;
 
   file_write_text (scr.buf, scr.conn, stat); {write buffered line to the file}

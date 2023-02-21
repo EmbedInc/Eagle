@@ -133,12 +133,14 @@ procedure eagle_cmd_move_cmp (         {write MOVE command for a component}
   val_param;
 
 begin
-  eagle_scr_str (scr, 'move '(0), stat); {command name}
+  eagle_scr_str (scr, 'move '''(0), stat); {command name, start comp name}
   if sys_error(stat) then return;
 
   eagle_scr_strv (scr, name, stat);    {component designator}
   if sys_error(stat) then return;
   eagle_scr_int (scr, num, stat);
+  if sys_error(stat) then return;
+  eagle_scr_char (scr, '''', stat);
   if sys_error(stat) then return;
 
   eagle_scr_xy (scr, x, y, stat);      {location to move the component to}
