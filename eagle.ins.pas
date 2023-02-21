@@ -25,6 +25,41 @@ type
 {
 *   Subroutines and functions.
 }
+procedure eagle_cmd_circle (           {write circle command to Eagle script}
+  in out  scr: eagle_scr_t;            {script writing state}
+  in      x, y: real;                  {center point}
+  in      rad: real;                   {radius}
+  out     stat: sys_err_t);            {completion status}
+  val_param; extern;
+
+procedure eagle_cmd_hole (             {write hole command to Eagle script}
+  in out  scr: eagle_scr_t;            {script writing state}
+  in      x, y: real;                  {center point}
+  out     stat: sys_err_t);            {completion status}
+  val_param; extern;
+
+procedure eagle_cmd_move_cmp (         {write MOVE command for a component}
+  in out  scr: eagle_scr_t;            {script writing state}
+  in      name: univ string_var_arg_t; {comp designator name, like "R" of R23}
+  in      num: sys_int_machine_t;      {comp designator number, like 23 of R23}
+  in      x, y: real;                  {where to move component to}
+  out     stat: sys_err_t);            {completion status}
+  val_param; extern;
+
+procedure eagle_cmd_text (             {write text command to Eagle script}
+  in out  scr: eagle_scr_t;            {script writing state}
+  in      x, y: real;                  {text anchor point}
+  in      s: univ string_var_arg_t;    {text string to write}
+  out     stat: sys_err_t);            {completion status}
+  val_param; extern;
+
+procedure eagle_cmd_text_s (           {write text command from Pascal string}
+  in out  scr: eagle_scr_t;            {script writing state}
+  in      x, y: real;                  {text anchor point}
+  in      s: string;                   {text string to write}
+  out     stat: sys_err_t);            {completion status}
+  val_param; extern;
+
 function eagle_inch_mm (               {convert from inches to mm}
   in      inch: real)                  {input in inches}
   :real;                               {output in mm}
@@ -46,16 +81,15 @@ function eagle_mm_inch (               {convert from mm to inches}
   :real;                               {output in inches}
   val_param; extern;
 
-procedure eagle_scr_char (             {write character to Eagle script file}
+procedure eagle_scr_arcdir (           {write arc direction keyword, separators added}
   in out  scr: eagle_scr_t;            {script writing state}
-  in      c: char;                     {character to write}
+  in      cw: boolean;                 {arc direction is clockwise}
   out     stat: sys_err_t);            {completion status}
   val_param; extern;
 
-procedure eagle_scr_circle (           {write circle command to Eagle script}
+procedure eagle_scr_char (             {write character to Eagle script file}
   in out  scr: eagle_scr_t;            {script writing state}
-  in      x, y: real;                  {center point}
-  in      rad: real;                   {radius}
+  in      c: char;                     {character to write}
   out     stat: sys_err_t);            {completion status}
   val_param; extern;
 
@@ -76,12 +110,6 @@ procedure eagle_scr_fp (               {write floating point value to script fil
   out     stat: sys_err_t);            {completion status}
   val_param; extern;
 
-procedure eagle_scr_hole (             {write hole command to Eagle script}
-  in out  scr: eagle_scr_t;            {script writing state}
-  in      x, y: real;                  {center point}
-  out     stat: sys_err_t);            {completion status}
-  val_param; extern;
-
 procedure eagle_scr_int (              {write integer to script file}
   in out  scr: eagle_scr_t;            {script writing state}
   in      ii: sys_int_machine_t;       {integer value to write}
@@ -97,6 +125,11 @@ procedure eagle_scr_open (             {start writing an Eagle script file}
   in out  egl: eagle_t;                {state for this use of the library}
   in      fnam: univ string_var_arg_t; {script file name, ".scr" suffix implied}
   out     scr_p: eagle_scr_p_t;        {pointer to new script writing state}
+  out     stat: sys_err_t);            {completion status}
+  val_param; extern;
+
+procedure eagle_scr_space (            {guarantee space separator after previous}
+  in out  scr: eagle_scr_t;            {script writing state}
   out     stat: sys_err_t);            {completion status}
   val_param; extern;
 
@@ -121,20 +154,6 @@ procedure eagle_scr_strlinev (         {write vstring as whole line, old line fi
 procedure eagle_scr_strv (             {write var string to script file}
   in out  scr: eagle_scr_t;            {script writing state}
   in      s: univ string_var_arg_t;    {the string to write}
-  out     stat: sys_err_t);            {completion status}
-  val_param; extern;
-
-procedure eagle_scr_text (             {write text command to Eagle script}
-  in out  scr: eagle_scr_t;            {script writing state}
-  in      x, y: real;                  {text anchor point}
-  in      s: string;                   {text string to write}
-  out     stat: sys_err_t);            {completion status}
-  val_param; extern;
-
-procedure eagle_scr_textv (            {write text command to Eagle script}
-  in out  scr: eagle_scr_t;            {script writing state}
-  in      x, y: real;                  {text anchor point}
-  in      s: univ string_var_arg_t;    {text string to write}
   out     stat: sys_err_t);            {completion status}
   val_param; extern;
 

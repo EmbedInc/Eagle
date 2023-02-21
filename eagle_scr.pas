@@ -4,6 +4,7 @@ module eagle_scr;
 define eagle_scr_open;
 define eagle_scr_close;
 define eagle_scr_char;
+define eagle_scr_space;
 define eagle_scr_strv;
 define eagle_scr_str;
 define eagle_scr_int;
@@ -13,10 +14,7 @@ define eagle_scr_line;
 define eagle_scr_cmdend;
 define eagle_scr_strlinev;
 define eagle_scr_strline;
-define eagle_scr_circle;
-define eagle_scr_hole;
-define eagle_scr_textv;
-define eagle_scr_text;
+define eagle_scr_arcdir;
 %include 'eagle2.ins.pas';
 {
 ********************************************************************************
@@ -114,6 +112,29 @@ begin
   sys_error_none (stat);               {init to no error encountered}
 
   string_append1 (scr.buf, c);         {append the character}
+  end;
+{
+********************************************************************************
+*
+*   Subroutine EAGLE_SCR_SPACE (SCR, STAT)
+*
+*   Make sure that there is a separator after whatever is previously on the
+*   current script output line.  SCR is the script writing state.  A space is
+*   added to the current output line unless that line is empty or already ends
+*   in a space.
+}
+procedure eagle_scr_space (            {guarantee space separator after previous}
+  in out  scr: eagle_scr_t;            {script writing state}
+  out     stat: sys_err_t);            {completion status}
+  val_param;
+
+begin
+  sys_error_none (stat);               {init to no error encountered}
+
+  if scr.buf.len <= 0 then return;     {line is empty, nothing to separate from ?}
+  if scr.buf.str[scr.buf.len] = ' ' then return; {already ends in space separator ?}
+
+  eagle_scr_char (scr, ' ', stat);     {add space separator at end of line}
   end;
 {
 ********************************************************************************
@@ -332,107 +353,31 @@ begin
 {
 ********************************************************************************
 *
-*   Subroutine EAGLE_SCR_CIRCLE (SCR, X, Y, RAD, STAT)
+*   Subroutine EAGLE_SCR_ARCDIR (SCR, CW, STAT)
 *
-*   Write a CIRCLE command to the Eagle script open for writing on SCR.  X,Y is
-*   the circle center point and RAD its radius.  The current 2D transform is
-*   applied before the circle is written.
+*   Write the keyword for setting the arc direction in an ARC command.  SCR is
+*   the Eagle script writing state.  CW indicates the desired arc direction.
+*   The direction is in model space.  The arc direction written will be opposite
+*   when the 2D transform inverts.
+*
+*   The keyword will be separated from previous and subsequent text.
 }
-procedure eagle_scr_circle (           {write circle command to Eagle script}
+procedure eagle_scr_arcdir (           {write arc direction keyword, separators added}
   in out  scr: eagle_scr_t;            {script writing state}
-  in      x, y: real;                  {center point}
-  in      rad: real;                   {radius}
-  out     stat: sys_err_t);            {completion status}
-  val_param;
-
-begin
-  eagle_scr_str (scr, 'circle'(0), stat);
-  if sys_error(stat) then return;
-  eagle_scr_xy (scr, x, y, stat);
-  if sys_error(stat) then return;
-  eagle_scr_xy (scr, x+rad, y, stat);
-  if sys_error(stat) then return;
-  eagle_scr_cmdend (scr, stat);
-  end;
-{
-********************************************************************************
-*
-*   Subroutine EAGLE_SCR_HOLE (SCR, X, Y, STAT)
-*
-*   Write a HOLE command to the Eagle script open for writing on SCR.  The
-*   center of the hole will be at X,Y.  The hole diameter is from the current
-*   setting, changed with a CHANGE DRILL command.  The current 2D transform is
-*   applied before the command is written.
-}
-procedure eagle_scr_hole (             {write hole command to Eagle script}
-  in out  scr: eagle_scr_t;            {script writing state}
-  in      x, y: real;                  {center point}
-  out     stat: sys_err_t);            {completion status}
-  val_param;
-
-begin
-  eagle_scr_str (scr, 'hole'(0), stat);
-  if sys_error(stat) then return;
-  eagle_scr_xy (scr, x, y, stat);
-  if sys_error(stat) then return;
-  eagle_scr_cmdend (scr, stat);
-  end;
-{
-********************************************************************************
-*
-*   Subroutine EAGLE_SCR_TEXTV (SCR, X, Y, S, STAT)
-*
-*   Write a TEXT command to the Eagle script open for writing on SCR.  S is the
-*   text string to write, specified as a var string.  The text anchor point will
-*   be at X,Y.  The current 2D transform is applied before the command is
-*   written.
-}
-procedure eagle_scr_textv (            {write text command to Eagle script}
-  in out  scr: eagle_scr_t;            {script writing state}
-  in      x, y: real;                  {text anchor point}
-  in      s: univ string_var_arg_t;    {text string to write}
+  in      cw: boolean;                 {arc direction is clockwise}
   out     stat: sys_err_t);            {completion status}
   val_param;
 
 var
-  ii: sys_int_machine_t;               {text string index}
-  c: char;                             {current text string character}
+  c: boolean;                          {final clockwise after transform}
 
 begin
-  eagle_scr_str (scr, 'text '''(0), stat);
+  eagle_scr_space (scr, stat);         {guarantee separator after previous text}
   if sys_error(stat) then return;
 
-  for ii := 1 to s.len do begin        {loop over the text string characters}
-    c := s.str[ii];                    {get this character}
-    if c = '''' then begin             {apostrophy, requires special handling ?}
-      eagle_scr_char (scr, c, stat);   {doubled up to cause single to be written}
-      if sys_error(stat) then return;
-      end;
-    eagle_scr_char (scr, c, stat);     {write this char to command}
-    if sys_error(stat) then return;
-    end;                               {back for next character in text string}
-
-  eagle_scr_str (scr, ''''(0), stat);  {end the text string}
-  if sys_error(stat) then return;
-  eagle_scr_cmdend (scr, stat);
-  end;
-{
-********************************************************************************
-*
-*   Subroutine EAGLE_SCR_TEXT (SCR, X, Y, S, STAT)
-*
-*   Write a TEXT command to the Eagle script open for writing on SCR.  S is the
-*   text string to write, specified as a Pascal string.  The text anchor point
-*   will be at X,Y.  The current 2D transform is applied before the command is
-*   written.
-}
-procedure eagle_scr_text (             {write text command to Eagle script}
-  in out  scr: eagle_scr_t;            {script writing state}
-  in      x, y: real;                  {text anchor point}
-  in      s: string;                   {text string to write}
-  out     stat: sys_err_t);            {completion status}
-  val_param;
-
-begin
-  eagle_scr_textv (scr, x, y, string_v(s), stat);
+  c := cw;                             {init for normal transform}
+  if scr.egl_p^.inv then c := not c;   {flip for inverted transform}
+  if c
+    then eagle_scr_str (scr, 'cw ', stat)
+    else eagle_scr_str (scr, 'ccw ', stat);
   end;

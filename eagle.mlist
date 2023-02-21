@@ -1,3 +1,4 @@
+eagle_cmd.obj
 eagle_lib.obj
 eagle_scr.obj
 eagle_xform.obj
