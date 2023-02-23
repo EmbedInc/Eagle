@@ -9,6 +9,7 @@ program csv_bom;
 %include 'string.ins.pas';
 %include 'file.ins.pas';
 %include 'stuff.ins.pas';
+%include 'part.ins.pas';
 
 const
   max_msg_args = 2;                    {max arguments we can pass to a message}
@@ -63,8 +64,8 @@ var
   part_p, p2_p: part_p_t;              {scratch part descriptors}
   parts: sys_int_machine_t;            {total number of unique part types}
   line: sys_int_machine_t;             {output file line number being built}
-  refparts: partref_list_t;            {reference parts list}
-  refpart_p: partref_part_p_t;         {points to current reference part}
+  refparts: part_reflist_t;            {reference parts list}
+  refpart_p: part_ref_p_t;             {points to current reference part}
   nvent_p: nameval_ent_p_t;            {points to curr name/value list entry}
   cw: csv_out_t;                       {CSV file writing state}
   olempty: boolean;                    {output line is completely empty}
@@ -408,7 +409,7 @@ begin
   string_unpad (buf);                  {delete any trailing spaces}
   if buf.len = 0 then begin            {input line is blank ?}
 infile_bad:
-    sys_message_bomb ('stuff', 'bom_infile_bad', nil, 0);
+    sys_message_bomb ('eagle', 'bom_infile_bad', nil, 0);
     end;
   p := 1;                              {init the input line parse index}
   getfield (tk);
@@ -570,7 +571,7 @@ loop_line:                             {back here each new input file line}
 otherwise
     sys_msg_parm_vstr (msg_parm[1], tk);
     sys_msg_parm_vstr (msg_parm[2], part_p^.desig);
-    sys_message_bomb ('stuff', 'bom_valstat_bad', msg_parm, 2);
+    sys_message_bomb ('eagle', 'bom_valstat_bad', msg_parm, 2);
     end;
 
   getfield (tk);                       {get BOM attribute value}
@@ -591,7 +592,7 @@ otherwise
 otherwise
     sys_msg_parm_vstr (msg_parm[1], tk);
     sys_msg_parm_vstr (msg_parm[2], part_p^.desig);
-    sys_message_bomb ('stuff', 'bom_bom_bad', msg_parm, 2);
+    sys_message_bomb ('eagle', 'bom_bom_bad', msg_parm, 2);
     end;
 
   getfield (tk);                       {get SUBST attribute value}
@@ -612,7 +613,7 @@ otherwise
 otherwise
     sys_msg_parm_vstr (msg_parm[1], tk);
     sys_msg_parm_vstr (msg_parm[2], part_p^.desig);
-    sys_message_bomb ('stuff', 'bom_subst_bad', msg_parm, 2);
+    sys_message_bomb ('eagle', 'bom_subst_bad', msg_parm, 2);
     end;
 
   getfield (part_p^.desc);             {get explicit description string}
@@ -628,7 +629,7 @@ otherwise
     if sys_error(stat) then begin
       sys_msg_parm_vstr (msg_parm[1], tk);
       sys_msg_parm_vstr (msg_parm[2], part_p^.desig);
-      sys_message_bomb ('stuff', 'bom_qty_bad', msg_parm, 2);
+      sys_message_bomb ('eagle', 'bom_qty_bad', msg_parm, 2);
       end;
     part_p^.qty := part_p^.qtyuse;     {update total usage to this one part}
     end;
@@ -662,7 +663,7 @@ otherwise
 otherwise
     sys_msg_parm_vstr (msg_parm[1], tk);
     sys_msg_parm_vstr (msg_parm[2], part_p^.desig);
-    sys_message_bomb ('stuff', 'bom_is_bad', msg_parm, 2);
+    sys_message_bomb ('eagle', 'bom_is_bad', msg_parm, 2);
     end;
 
   goto loop_line;                      {back to get next input line}
@@ -670,7 +671,7 @@ otherwise
 eof:                                   {end of input file encountered}
   file_close (conn);                   {close the connection to the input file}
   sys_msg_parm_int (msg_parm[1], np);  {show number of compents read in}
-  sys_message_parms ('stuff', 'bom_ncomponents', msg_parm, 1);
+  sys_message_parms ('eagle', 'bom_ncomponents', msg_parm, 1);
 {
 *   All done reading the input file.
 *
@@ -694,8 +695,8 @@ eof:                                   {end of input file encountered}
 *   Read the parts reference file, if it exists, and build the list of reference
 *   parts.
 }
-  partref_list_init (refparts, mem_p^); {init reference parts list}
-  partref_read_csv (
+  part_reflist_init (refparts, mem_p^); {init reference parts list}
+  part_reflist_read_csv (
     refparts,                          {the list to add reference parts to}
     string_v('(cog)progs/eagle/parts/parts.csv'(0)), {name of file to read ref parts from}
     stat);
@@ -913,7 +914,7 @@ next_comp:                             {done with current component}
     end;                               {back to process this new component}
 
   sys_msg_parm_int (msg_parm[1], parts); {show number of unique parts found for the BOM}
-  sys_message_parms ('stuff', 'bom_nbom', msg_parm, 1);
+  sys_message_parms ('eagle', 'bom_nbom', msg_parm, 1);
 {
 ****************************************
 *
@@ -1259,7 +1260,7 @@ next_part:                             {done processing the current part}
 
   file_close (conn);                   {close the output file}
   sys_msg_parm_vstr (msg_parm[1], conn.tnam);
-  sys_message_parms ('stuff', 'bom_outfile', msg_parm, 1);
+  sys_message_parms ('eagle', 'bom_outfile', msg_parm, 1);
 {
 *   Initialize the Excel spreadsheet file by copying the template.  This sets up
 *   the formatting of the cells, which would not happen if the new .CSV file was
