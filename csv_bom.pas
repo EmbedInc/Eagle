@@ -20,12 +20,12 @@ var
   fnam: string_treename_t;             {scratch file name}
   gnam: string_leafname_t;             {generic name of board files}
   dir: string_treename_t;              {directory containing input and output files}
-  conn: file_conn_t;                   {connection to input or output file}
-  buf: string_var8192_t;               {one line input and output buffer}
+  cin: csv_in_t;                       {input CSV file reading state}
+  conn: file_conn_t;                   {connection TSV output file}
+  buf: string_var8192_t;               {one line output buffer}
   tk: string_var8192_t;                {scratch token}
   tk2, tk3: string_var80_t;            {secondary scratch tokens}
   housename: string_var80_t;           {organization to use private part numbers of}
-  p: string_index_t;                   {BUF parse index}
   pf: string_index_t;                  {parse index into current field}
   partlist_p: part_list_p_t;           {points to list of BOM parts}
   part_p, p2_p: part_p_t;              {scratch part descriptors}
@@ -53,39 +53,23 @@ label
 *
 *   Subroutine GETFIELD (F)
 *
-*   Parse the next comma separated field from BUF and return it in F.  If BUF
-*   is already exhausted, F is returned the empty string.
+*   Get the next CSV input file field into F.  If the input line has already
+*   been exhausted then F is returned the empty string with no error.
 }
 procedure getfield (                   {get next comma separated field from BUF}
   in out  f: univ string_var_arg_t);   {returned field string}
   val_param; internal;
 
 var
-  i: sys_int_machine_t;
-  stat: sys_err_t;
+  stat: sys_err_t;                     {completion status}
 
 begin
-  pf := 1;                             {reset parse index into current field}
-  f.len := 0;                          {init returned string to empty}
-  if p > buf.len then return;          {BUF already exhausted ?}
-  while buf.str[p] = ' ' do begin      {skip over leading blanks}
-    p := p + 1;                        {skip over this blank}
-    if p > buf.len then return;        {hit end of BUF ?}
+  csv_in_field_str (cin, f, stat);     {get next fiel on the input line}
+  if string_eos(stat) then begin       {hit end of input line ?}
+    f.len := 0;                        {return the empty string without error}
+    return;
     end;
-
-  string_token_anyd (                  {parse the next field from BUF}
-    buf,                               {input string}
-    p,                                 {parse index}
-    ',', 1,                            {list of token delimiters}
-    0,                                 {number of delimiters that can repeat}
-    [string_tkopt_quoteq_k],           {token may be within quotes ""}
-    f,                                 {returned token}
-    i,                                 {index of deciding delimiter}
-    stat);
-  discard (string_eos(stat));          {end of input string is not an error}
   sys_error_abort (stat, '', '', nil, 0);
-
-  string_unpad (f);                    {delete any trailing spaces}
   end;
 {
 ********************************************************************************
@@ -277,15 +261,25 @@ begin
 {
 *   Open the CSV input file.  This allows us to abort now if there is a problem,
 *   and also gets us the directory the CSV file is in.
-*
-*   The generic board name is saved in GNAM, and the input file directory is
-*   saved in DIR.
 }
-  file_open_read_text (fnam, '_parts.csv', conn, stat); {open the input file}
+  csv_in_open (fnam, cin, stat);       {open the CSV input file for reading}
   sys_error_abort (stat, '', '', nil, 0);
 
-  string_pathname_split (conn.tnam, dir, fnam); {get name of directory containing input file}
-  string_copy (conn.gnam, gnam);       {save generic name of board files}
+  string_pathname_split (cin.conn.tnam, dir, fnam); {get name of directory containing input file}
+{
+*   Save the board name in GNAM.  This is the generic name of the input file
+*   except if that name ends in "_parts".  In that case, the "_parts" is
+*   stripped.
+}
+  string_copy (cin.conn.gnam, gnam);   {get generic name of the input file}
+
+  if gnam.len > 6 then begin           {long enough to allow for x_parts ?}
+    string_substr (gnam, gnam.len - 5, gnam.len, tk); {get ending part}
+    string_upcase (tk);
+    if string_equal (tk, string_v('_PARTS'(0))) then begin {_PARTS ending ?}
+      gnam.len := gnam.len - tk.len;   {remove the ending}
+      end;
+    end;
 {
 *   Determine the organization name to use for in-house part numbers, if any.
 *   This is defined in a file called HOUSENAME, which can be in the directory of
@@ -314,64 +308,78 @@ begin
 *   name of each field.  These must be exactly right, or we assume that the file
 *   was not created by BOM.ULP, or the wrong version of it.
 }
-  file_read_text (conn, buf, stat);    {read the first input file line into BUF}
+  csv_in_line (cin, stat);             {read the CSV input file header line}
   sys_error_abort (stat, '', '', nil, 0);
-  string_unpad (buf);                  {delete any trailing spaces}
-  if buf.len = 0 then begin            {input line is blank ?}
-infile_bad:
-    sys_message_bomb ('eagle', 'bom_infile_bad', nil, 0);
-    end;
-  p := 1;                              {init the input line parse index}
+
   getfield (tk);
   string_upcase (tk);
   if not string_equal (tk, string_v('DESIGNATOR')) then goto infile_bad;
+
   getfield (tk);
   string_upcase (tk);
   if not string_equal (tk, string_v('LIBRARY')) then goto infile_bad;
+
   getfield (tk);
   string_upcase (tk);
   if not string_equal (tk, string_v('DEVICE')) then goto infile_bad;
+
   getfield (tk);
   string_upcase (tk);
   if not string_equal (tk, string_v('VALUE')) then goto infile_bad;
+
   getfield (tk);
   string_upcase (tk);
   if not string_equal (tk, string_v('PACKAGE')) then goto infile_bad;
+
   getfield (tk);
   string_upcase (tk);
   if not string_equal (tk, string_v('MANUF')) then goto infile_bad;
+
   getfield (tk);
   string_upcase (tk);
   if not string_equal (tk, string_v('PARTNUM')) then goto infile_bad;
+
   getfield (tk);
   string_upcase (tk);
   if not string_equal (tk, string_v('SUPPLIER')) then goto infile_bad;
+
   getfield (tk);
   string_upcase (tk);
   if not string_equal (tk, string_v('VALSTAT')) then goto infile_bad;
+
   getfield (tk);
   string_upcase (tk);
   if not string_equal (tk, string_v('BOM')) then goto infile_bad;
+
   getfield (tk);
   string_upcase (tk);
   if not string_equal (tk, string_v('SUBST')) then goto infile_bad;
+
   getfield (tk);
   string_upcase (tk);
   if not string_equal (tk, string_v('DESC')) then goto infile_bad;
+
   getfield (tk);
   string_upcase (tk);
   if not string_equal (tk, string_v('DVAL')) then goto infile_bad;
+
   getfield (tk);
   string_upcase (tk);
   if not string_equal (tk, string_v('QTY')) then goto infile_bad;
+
   getfield (tk);
   string_upcase (tk);
   if not string_equal (tk, string_v('INHOUSE')) then goto infile_bad;
+
   getfield (tk);
   string_upcase (tk);
   if not string_equal (tk, string_v('IS')) then goto infile_bad;
 
-  if p <= buf.len then goto infile_bad; {additional unexpected field ?}
+  csv_in_field_str (cin, tk, stat);    {try to get one more field}
+  if not string_eos(stat) then begin   {additional unexpected field ?}
+infile_bad:
+    sys_message_bomb ('eagle', 'bom_infile_bad', nil, 0);
+    end;
 {
 *   The first line checks out, so this is apparently a valid input file.
 *
@@ -387,12 +395,10 @@ infile_bad:
 *   Read the input file and create the list of individual parts.
 }
 loop_line:                             {back here each new input file line}
-  file_read_text (conn, buf, stat);    {read this input file line}
+  csv_in_line (cin, stat);             {read the next CSV input file line}
   if file_eof(stat) then goto eof;     {hit end of input file ?}
   sys_error_abort (stat, '', '', nil, 0);
-  string_unpad (buf);                  {delete any trailing spaces from input line}
-  if buf.len <= 0 then goto loop_line; {ignore blank lines}
-  p := 1;                              {init BUF parse index}
+
   part_list_ent_new_end (partlist_p^, part_p); {add new blank part to end of list}
 {
 *   Read the data from the input file line into the new part descriptor.  The
@@ -578,7 +584,9 @@ otherwise
   goto loop_line;                      {back to get next input line}
 
 eof:                                   {end of input file encountered}
-  file_close (conn);                   {close the connection to the input file}
+  csv_in_close (cin, stat);            {close the CSV input file}
+  sys_error_abort (stat, '', '', nil, 0);
+
   sys_msg_parm_int (msg_parm[1], partlist_p^.nparts); {show number of parts read in}
   sys_message_parms ('eagle', 'bom_ncomponents', msg_parm, 1);
 {
@@ -829,7 +837,7 @@ next_comp:                             {done with current component}
 *   Write the <name>_BOM.TSV file.  This is the BOM ready to import into a
 *   spreadsheet.
 }
-  string_pathname_join (dir, conn.gnam, fnam); {make pathname of the output file}
+  string_pathname_join (dir, gnam, fnam); {make pathname of the output file}
   file_open_write_text (fnam, '_bom.tsv', conn, stat); {open output file}
   sys_error_abort (stat, '', '', nil, 0);
 {
@@ -1174,7 +1182,7 @@ next_part:                             {done processing the current part}
 *   the formatting of the cells, which would not happen if the new .CSV file was
 *   imported into a empty spreadsheet.
 }
-  string_pathname_join (dir, conn.gnam, fnam); {init to generic output file pathname}
+  string_pathname_join (dir, gnam, fnam); {init to generic output file pathname}
   string_appends (fnam, '_bom.xls'(0)); {make spreadsheet file full pathname}
   file_copy (                          {copy template spreadsheet file}
     string_v('(cog)progs/eagle/bom_template.xls'(0)), {source file name}
@@ -1188,7 +1196,7 @@ next_part:                             {done processing the current part}
 *   Write the <name>_BOM.CSV file.  This is the bare BOM for reading by other
 *   applications.
 }
-  string_pathname_join (dir, conn.gnam, fnam); {build the output file name}
+  string_pathname_join (dir, gnam, fnam); {build the output file name}
   string_appends (fnam, '_bom'(0));
   csv_out_open (fnam, cw, stat);       {open the CSV output file}
   sys_error_abort (stat, '', '', nil, 0);
