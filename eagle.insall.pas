@@ -5,4 +5,5 @@
 %include 'math.ins.pas';
 %include 'vect.ins.pas';
 %include 'stuff.ins.pas';
+%include 'part.ins.pas';
 %include 'eagle.ins.pas';

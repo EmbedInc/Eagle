@@ -4,6 +4,13 @@
 const
   eagle_subsys_k = -77;                {subsystem ID for the EAGLE library}
 
+  eagle_stat_bomfile_bad_k = 1;        {not a valid CSV file from BOM ULP}
+  eagle_stat_valstat_bad_k = 2;        {bad VALSTAT field value}
+  eagle_stat_bomattr_bad_k = 3;        {bad BOM field value}
+  eagle_stat_subst_bad_k = 4;          {bad SUBST field value}
+  eagle_stat_qty_bad_k = 5;            {bad QTY field value}
+  eagle_stat_isafe_bad_k = 6;          {bad intrinsic safety field value}
+
 type
   eagle_p_t = ^eagle_t;                {pointer to EAGLE library use state}
 
@@ -80,6 +87,14 @@ procedure eagle_lib_new (              {create new use of the EAGLE library}
 function eagle_mm_inch (               {convert from mm to inches}
   in      mm: real)                    {input in mm}
   :real;                               {output in inches}
+  val_param; extern;
+
+procedure eagle_parts_read (           {read xxx_PARTS.CSV file written by BOM ULP}
+  in      fnam: univ string_var_arg_t; {name of CSV file to read, ".csv" may be omitted}
+  in out  tnam: univ string_var_arg_t; {full treename of CSV file that was read}
+  in out  gnam: univ string_var_arg_t; {generic name, XXX in xxx_PARTS.CSV}
+  in out  list: part_list_t;           {list to add to add the parts from file to}
+  out     stat: sys_err_t);            {completion status}
   val_param; extern;
 
 procedure eagle_scr_arcdir (           {write arc direction keyword, separators added}

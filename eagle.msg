@@ -1,24 +1,30 @@
 /*   Error and other messages specific to the EAGLE library.
 /*
-
 /*   Messages for the error status codes.
 /*
-
-
+msg err1
+  lan english -def
+    The name_PARTS.CSV file "%p1s" is not of the expected format.  This
+    can mean the version of the BOM ULP and this program are out of sync.
+msg err2
+  lan english -def
+    Invalid VALSTAT value of "%p1s" found on line %p3i of file "%p2s".
+msg err3
+  lan english -def
+    Invalid BOM value of "%p1s" found on line %p3i of file "%p2s".
+msg err4
+  lan english -def
+    Invalid SUBST value of "%p1s" found on line %p3i of file "%p2s".
+msg err5
+  lan english -def
+    Invalid QTY value of "%p1s" found on line %p3i of file "%p2s".
+msg err6
+  lan english -def
+    Invalid IS (intrinsic safety) value of "%p1s" found on line %p3i of file "%p2s".
 /*
 /*   Messages related to reading the name_PARTS.CSV file produced by the Eagle
 /*   BOM.ULP.
 /*
-msg bom_bom_bad
-  lan english -def
-    Invalid BOM attribute of "%p1s" found for part %p2s.
-msg bom_infile_bad
-  lan english -def
-    The input file is not of the correct format.  Use the latest version
-    of the Eagle ULP PARTS_CSV to produce the input file.
-msg bom_is_bad
-  lan english -def
-    Invalid IS attribute of "%p1s" found for part %p2s.
 msg bom_nbom
   lan english -def
     %p1i unique BOM parts found.
@@ -28,12 +34,6 @@ msg bom_ncomponents
 msg bom_outfile
   lan english -def
     Created: "%p1s"
-msg bom_qty_bad
+msg housename
   lan english -def
-    Invalid QTY attribute of "%p1s" found for part %p2s.
-msg bom_subst_bad
-  lan english -def
-    Invalid SUBST attribute of "%p1s" found for part %p2s.
-msg bom_valstat_bad
-  lan english -def
-    Invalid VALSTAT attribute of "%p1s" found for part %p2s.
+    In-house part numbers are for the organization "%p1s".
