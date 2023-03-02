@@ -26,7 +26,7 @@ var
   conn: file_conn_t;                   {connection TSV output file}
   buf: string_var8192_t;               {one line output buffer}
   tk: string_var8192_t;                {scratch token}
-  tk2, tk3: string_var80_t;            {secondary scratch tokens}
+  tk2: string_var80_t;                 {secondary scratch token}
   partlist_p: part_list_p_t;           {points to list of BOM parts}
   part_p, p2_p: part_p_t;              {scratch part descriptors}
   line: sys_int_machine_t;             {output file line number being built}
@@ -41,8 +41,7 @@ var
   stat: sys_err_t;                     {completion status}
 
 label
-  have_desc, commch_same, next_commch, next_comp, next_part,
-  next_cw;
+  commch_same, next_commch, next_comp, next_part, next_cw;
 {
 ********************************************************************************
 *
@@ -111,7 +110,6 @@ begin
   buf.max := size_char(buf.str);
   tk.max := size_char(tk.str);
   tk2.max := size_char(tk2.str);
-  tk3.max := size_char(tk3.str);
 
   string_cmline_init;                  {init for reading the command line}
   string_cmline_token (fnam, stat);    {get input file name}
@@ -186,36 +184,7 @@ begin
 *
 *   For each part, attempt to fill in some empty fields from other fields.
 }
-  part_p := partlist_p^.first_p;       {init to current part is first in list}
-  while part_p <> nil do begin         {once for each part in the list}
-{
-*   Try to fill in the description from other fields if the description was not
-*   explicitly set.
-}
-    if part_p^.desc.len <= 0 then begin {no explicit description string ?}
-      string_copy (part_p^.lib, part_p^.desc); {init description to library name}
-      string_copy (part_p^.devu, tk2);
-      string_copy (part_p^.lib, tk3);
-      tk2.len := min(tk2.len, tk3.len);
-      tk3.len := tk2.len;
-      if string_equal (tk2, tk3)       {device name redundant with library name ?}
-        then goto have_desc;
-      if part_p^.val.len > 0 then begin {this part has a value string ?}
-        string_copy (part_p^.devu, tk2);
-        string_copy (part_p^.val, tk3);
-        tk2.len := min(tk2.len, tk3.len);
-        tk3.len := tk2.len;
-        string_upcase (tk3);
-        if string_equal (tk2, tk3)     {device name redundant with part value ?}
-          then goto have_desc;
-        end;
-      string_appends (part_p^.desc, ', '(0));
-      string_append (part_p^.desc, part_p^.dev); {add device name within library}
-      end;
-have_desc:                             {part description all set in TK}
-
-    part_p := part_p^.next_p;          {advance to the next part in the list}
-    end;                               {back to process this new part}
+  part_def_list (partlist_p^);         {fill in defaults from other fields as possible}
 {
 ****************************************
 *
