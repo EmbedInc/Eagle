@@ -31,8 +31,6 @@ var
   part_p, p2_p: part_p_t;              {scratch part descriptors}
   line: sys_int_machine_t;             {output file line number being built}
   reflist_p: part_reflist_p_t;         {points to reference parts list}
-  nunique: sys_int_machine_t;          {number of unique parts found}
-  last_p: part_p_t;                    {to last part in common parts chain}
   cw: csv_out_t;                       {CSV file writing state}
   olempty: boolean;                    {output line is completely empty}
 
@@ -41,7 +39,7 @@ var
   stat: sys_err_t;                     {completion status}
 
 label
-  commch_same, next_commch, next_comp, next_part, next_cw;
+  next_part, next_cw;
 {
 ********************************************************************************
 *
@@ -190,40 +188,9 @@ begin
 *
 *   Scan the list of components and determine common part usage.
 }
-  nunique := 0;                        {init number of unique parts found}
+  part_comm_find (partlist_p^);        {find common parts}
 
-  part_p := partlist_p^.first_p;       {init current component to first in list}
-  while part_p <> nil do begin         {scan thru the entire list of components}
-    last_p := part_p;                  {init end of common parts chain for this component}
-    if part_flag_nobom_k in part_p^.flags {this component not for the BOM ?}
-      then goto next_comp;
-    if part_flag_comm_k in part_p^.flags then goto next_comp; {this comp already processed ?}
-    nunique := nunique + 1;            {count one more unique part found}
-    p2_p := part_p^.next_p;            {init pointer to second comp to check for common}
-    while p2_p <> nil do begin         {scan remaining components looking for commons}
-      if part_flag_comm_k in p2_p^.flags then goto next_commch; {already common to other part ?}
-      if not string_equal (p2_p^.housenum, part_p^.housenum) then goto next_commch;
-      if part_p^.housenum.len > 0 then goto commch_same; {same in-house part number ?}
-      if not string_equal (p2_p^.lib, part_p^.lib) then goto next_commch;
-      if not string_equal (p2_p^.devu, part_p^.devu) then goto next_commch;
-      if not string_equal (p2_p^.val, part_p^.val) then goto next_commch;
-      if not string_equal (p2_p^.pack, part_p^.pack) then goto next_commch;
-      {
-      *   The component at P2_P uses the same device as the one at PART_P.
-      }
-commch_same:
-      last_p^.same_p := p2_p;          {link this component to end of common parts chain}
-      last_p := p2_p;                  {update pointer to end of common parts chain}
-      p2_p^.flags := p2_p^.flags + [part_flag_comm_k]; {this comp is in common parts chain}
-      part_p^.qty := part_p^.qty + p2_p^.qtyuse; {update total quantity}
-next_commch:                           {advance to next component to check against curr}
-      p2_p := p2_p^.next_p;
-      end;                             {back to check new component same as curr comp}
-next_comp:                             {done with current component}
-    part_p := part_p^.next_p;          {advance to next component in this list}
-    end;                               {back to process this new component}
-
-  sys_msg_parm_int (msg_parm[1], nunique); {show number of unique parts found for the BOM}
+  sys_msg_parm_int (msg_parm[1], partlist_p^.nunique); {show number of unique BOM parts}
   sys_message_parms ('eagle', 'bom_nbom', msg_parm, 1);
 {
 ****************************************
