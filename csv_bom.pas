@@ -31,20 +31,17 @@ var
   part_p, p2_p: part_p_t;              {scratch part descriptors}
   line: sys_int_machine_t;             {output file line number being built}
   reflist_p: part_reflist_p_t;         {points to reference parts list}
-  refpart_p: part_ref_p_t;             {points to current reference part}
   nunique: sys_int_machine_t;          {number of unique parts found}
   last_p: part_p_t;                    {to last part in common parts chain}
-  nvent_p: nameval_ent_p_t;            {points to curr name/value list entry}
   cw: csv_out_t;                       {CSV file writing state}
   olempty: boolean;                    {output line is completely empty}
-  absmatch: boolean;                   {absolute part match}
 
   msg_parm:                            {references arguments passed to a message}
     array[1..max_msg_args] of sys_parm_msg_t;
   stat: sys_err_t;                     {completion status}
 
 label
-  refmatch, doneref, have_desc, commch_same, next_commch, next_comp, next_part,
+  have_desc, commch_same, next_commch, next_comp, next_part,
   next_cw;
 {
 ********************************************************************************
@@ -183,140 +180,7 @@ begin
 *   Scan the list of parts and compare each to the reference parts.  Fill in
 *   data from the reference part definition if the part matches the reference.
 }
-  part_p := partlist_p^.first_p;       {init to first part in list}
-  while part_p <> nil do begin         {once for each part in the list}
-    refpart_p := reflist_p^.first_p;   {init to first reference part}
-    while refpart_p <> nil do begin    {scan list of reference parts}
-{
-*   PART_P is pointing to the part in this BOM, and REFPART_P is pointing to the
-*   reference part to compare it to.
-*
-*   Look for absolute match first.  If a manufacturer part number, supplier part
-*   number, or the inhouse number match, then this will be considered a matching
-*   reference part.
-}
-  absmatch := true;                    {match will be absolute if found here}
-
-  ii := nameval_match (                {get manufacturer part number match}
-    refpart_p^.manuf,                  {the name/value pair to compare to}
-    part_p^.manuf,                     {name to compare against}
-    part_p^.mpart);                    {value to compare against}
-  if ii > 0 then goto refmatch;        {definitely matches ?}
-  if ii < 0 then goto doneref;         {definitely does not match ?}
-
-  ii := nameval_match (                {get supplier part number match}
-    refpart_p^.supplier,               {the name/value pair to compare to}
-    part_p^.supp,                      {name to compare against}
-    part_p^.spart);                    {value to compare against}
-  if ii > 0 then goto refmatch;        {definitely matches ?}
-  if ii < 0 then goto doneref;         {definitely does not match ?}
-
-  ii := nameval_match (                {get inhouse part number match}
-      refpart_p^.inhouse,              {the name/value pair to compare to}
-      partlist_p^.housename,           {name to compare against}
-      part_p^.housenum);               {value to compare against}
-  if ii > 0 then goto refmatch;        {definitely matches ?}
-  if ii < 0 then goto doneref;         {definitely does not match ?}
-{
-*   No absolute match was found.  These fields also did not indicate a absolute
-*   mismatch.
-*
-*   For this reference part to match this BOM part, at least one of the
-*   remaining fields must be a match, and none of them must be a mismatch.
-}
-  absmatch := false;                   {matches found here won't be absolute}
-  ii := 0;                             {init number of fields with explicit matches}
-
-  if (part_p^.desc.len > 0) and (refpart_p^.desc.len > 0) then begin
-    if not string_equal(part_p^.desc, refpart_p^.desc) then goto doneref;
-    ii := ii + 1;
-    end;
-
-  if (part_p^.val.len > 0) and (refpart_p^.value.len > 0) then begin
-    if not string_equal(part_p^.val, refpart_p^.value) then goto doneref;
-    ii := ii + 1;
-    end;
-
-  if (part_p^.pack.len > 0) and (refpart_p^.package.len > 0) then begin
-    if not string_equal(part_p^.pack, refpart_p^.package) then goto doneref;
-    ii := ii + 1;
-    end;
-
-  if ii <= 0 then goto doneref;        {no matching field found at all ?}
-{
-*   This reference part matches this BOM part.
-*
-*   Fill in or update fields in the BOM part from those in the reference part.
-}
-refmatch:                              {this is a matching reference part}
-  if
-      (refpart_p^.desc.len > 0) and    {reference description exists ?}
-      ((part_p^.desc.len = 0) or absmatch)
-      then begin
-    string_copy (refpart_p^.desc, part_p^.desc); {use the reference description}
-    end;
-
-  if
-      (refpart_p^.value.len > 0) and   {reference value exists ?}
-      ((refpart_p^.value.len > part_p^.val.len) or absmatch) {longer than existing value ?}
-      then begin
-    string_copy (refpart_p^.value, part_p^.val); {use the reference part value}
-    end;
-
-  if
-      (refpart_p^.package.len > 0) and {reference package name exists ?}
-      ((part_p^.pack.len <= 0) or absmatch)
-      then begin
-    string_copy (refpart_p^.package, part_p^.pack);
-    end;
-
-  if
-      refpart_p^.subst_set and
-      (not refpart_p^.subst)
-      then begin
-    part_p^.flags := part_p^.flags - [part_flag_subst_k]; {disallow substitutions}
-    end;
-
-  nvent_p := refpart_p^.manuf.first_p; {get manuf name and part num if appropriate}
-  if
-      (nvent_p <> nil) and             {refernce manufacturer info exists ?}
-      ((part_p^.manuf.len <= 0) or absmatch) {better than what we already have ?}
-      then begin
-    if nvent_p^.name_p <> nil then begin {ref manuf name exists ?}
-      string_copy (nvent_p^.name_p^, part_p^.manuf);
-      end;
-    if nvent_p^.value_p <> nil then begin {ref manuf part number exists ?}
-      string_copy (nvent_p^.value_p^, part_p^.mpart);
-      end;
-    end;
-
-  nvent_p := refpart_p^.supplier.first_p; {get supplier name and partnum if appropriate}
-  if
-      (nvent_p <> nil) and             {reference supplier info exists ?}
-      ((part_p^.supp.len <= 0) or absmatch) {better than what we already have ?}
-      then begin
-    if nvent_p^.name_p <> nil then begin {ref supplier name exists ?}
-      string_copy (nvent_p^.name_p^, part_p^.supp);
-      end;
-    if nvent_p^.value_p <> nil then begin {ref supplier part number exists ?}
-      string_copy (nvent_p^.value_p^, part_p^.spart);
-      end;
-    end;
-
-  if part_p^.housenum.len <= 0 then begin {don't already have in-house number ?}
-    if nameval_get_val (               {ref part has inhouse number ?}
-        refpart_p^.inhouse,
-        partlist_p^.housename,
-        tk) then begin
-      string_copy (tk, part_p^.housenum); {yes, copy it into BOM part}
-      end;
-    end;
-
-doneref:                               {done with this ref part}
-      refpart_p := refpart_p^.next_p;  {advance to next reference part in list}
-      end;                             {back to compare against this new ref part}
-    part_p := part_p^.next_p;          {advance to the next part in the list}
-    end;                               {back to process this new part}
+  part_ref_apply (partlist_p^, reflist_p^);
 {
 ****************************************
 *
