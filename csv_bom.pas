@@ -15,7 +15,7 @@ program csv_bom;
 %include 'eagle.ins.pas';
 
 const
-  max_msg_args = 2;                    {max arguments we can pass to a message}
+  max_msg_args = 1;                    {max arguments we can pass to a message}
 
 var
   fnam: string_treename_t;             {scratch file name}
@@ -26,14 +26,10 @@ var
   partlist_p: part_list_p_t;           {points to list of BOM parts}
   part_p: part_p_t;                    {points to current part in parts list}
   reflist_p: part_reflist_p_t;         {points to reference parts list}
-  cw: csv_out_t;                       {CSV file writing state}
 
   msg_parm:                            {references arguments passed to a message}
     array[1..max_msg_args] of sys_parm_msg_t;
   stat: sys_err_t;                     {completion status}
-
-label
-  next_cw;
 
 begin
   fnam.max := size_char(fnam.str);     {init local var strings}
@@ -119,7 +115,7 @@ begin
   string_pathname_join (dir, gnam, fnam); {make pathname of the output file}
   string_appends (fnam, '_bom.tsv'(0));
 
-  sys_msg_parm_vstr (msg_parm[1], fnam); {announce writing TSV file}
+  sys_msg_parm_vstr (msg_parm[1], fnam); {announce writing TSV BOM file}
   sys_message_parms ('file', 'writing_file', msg_parm, 1);
 
   part_bom_tsv (partlist_p^, fnam, stat); {write the BOM TSV file}
@@ -138,71 +134,23 @@ begin
   string_pathname_join (dir, gnam, fnam); {make pathname of the output file}
   string_appends (fnam, '_bom.csv'(0));
 
-  sys_msg_parm_vstr (msg_parm[1], fnam); {announce writing CSV file}
+  sys_msg_parm_vstr (msg_parm[1], fnam); {announce writing CSV BOM file}
   sys_message_parms ('file', 'writing_file', msg_parm, 1);
 
   part_bom_csv (partlist_p^, fnam, stat); {write the BOM CSV file}
   sys_error_abort (stat, '', '', nil, 0);
 {
-****************************************
-*
 *   Write the PARTS.CSV file.  This file contains one line for each unique part
 *   used, in the same format as a parts reference file.  The fields on each line
 *   are:
 *
 *     Desc,Value,Package,Subst,Inhouse #,Manuf,Manuf part #,Supplier,Supp part #
 }
-  string_pathname_join (               {make output file pathname}
-    dir,                               {directory to contain the file}
-    string_v('parts'),                 {generic name of the file, CSV suffix assumed later}
-    fnam);                             {returned full pathname}
-  csv_out_open (fnam, cw, stat);       {open CSV output file}
-  sys_error_abort (stat, '', '', nil, 0);
-  writeln ('Writing "', cw.conn.tnam.str:cw.conn.tnam.len, '"');
+  string_pathname_join (dir, string_v('parts.csv'), fnam); {make file name}
 
-  part_p := partlist_p^.first_p;       {init current component to first in list}
-  while part_p <> nil do begin         {scan thru the entire list of components}
-    if part_flag_nobom_k in part_p^.flags {this part not to be added to the BOM ?}
-      then goto next_cw;
-    if part_flag_comm_k in part_p^.flags then goto next_cw; {already on previous line ?}
+  sys_msg_parm_vstr (msg_parm[1], fnam); {announce writing reference parts file}
+  sys_message_parms ('file', 'writing_file', msg_parm, 1);
 
-    csv_out_vstr (cw, part_p^.desc, stat); {description}
-    sys_error_abort (stat, '', '', nil, 0);
-
-    csv_out_vstr (cw, part_p^.val, stat); {value}
-    sys_error_abort (stat, '', '', nil, 0);
-
-    csv_out_vstr (cw, part_p^.pack, stat); {package}
-    sys_error_abort (stat, '', '', nil, 0);
-
-    if part_flag_subst_k in part_p^.flags
-      then string_vstring (tk, 'Yes'(0), -1)
-      else string_vstring (tk, 'No'(0), -1);
-    csv_out_vstr (cw, tk, stat);       {substitute allowed yes/no}
-    sys_error_abort (stat, '', '', nil, 0);
-
-    csv_out_vstr (cw, part_p^.housenum, stat); {in-house part number}
-    sys_error_abort (stat, '', '', nil, 0);
-
-    csv_out_vstr (cw, part_p^.manuf, stat); {manufacturer name}
-    sys_error_abort (stat, '', '', nil, 0);
-
-    csv_out_vstr (cw, part_p^.mpart, stat); {manufacturer part number}
-    sys_error_abort (stat, '', '', nil, 0);
-
-    csv_out_vstr (cw, part_p^.supp, stat); {supplier name}
-    sys_error_abort (stat, '', '', nil, 0);
-
-    csv_out_vstr (cw, part_p^.spart, stat); {supplier part number}
-    sys_error_abort (stat, '', '', nil, 0);
-
-    csv_out_line (cw, stat);           {write this line to output file}
-    sys_error_abort (stat, '', '', nil, 0);
-
-next_cw:                               {done processing the current part}
-    part_p := part_p^.next_p;          {advance to next component}
-    end;                               {back and process this new component}
-
-  csv_out_close (cw, stat);
+  part_ref_write (partlist_p^, fnam, stat); {write the reference parts list CSV file}
   sys_error_abort (stat, '', '', nil, 0);
   end.
