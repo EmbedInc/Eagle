@@ -31,9 +31,6 @@ msg bom_nbom
 msg bom_ncomponents
   lan english -def
     %p1i individual components read.
-msg bom_outfile
-  lan english -def
-    Created: "%p1s"
 msg housename
   lan english -def
     In-house part numbers are for the organization "%p1s".

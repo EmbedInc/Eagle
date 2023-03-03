@@ -16,98 +16,32 @@ program csv_bom;
 
 const
   max_msg_args = 2;                    {max arguments we can pass to a message}
-  tab = chr(9);                        {ASCII TAB character}
 
 var
   ii: sys_int_machine_t;               {scratch integer and loop counter}
   fnam: string_treename_t;             {scratch file name}
+  tnam: string_treename_t;             {full file treename}
   gnam: string_leafname_t;             {generic name of board files}
   dir: string_leafname_t;              {directory containing input file}
-  conn: file_conn_t;                   {connection TSV output file}
-  buf: string_var8192_t;               {one line output buffer}
   tk: string_var8192_t;                {scratch token}
-  tk2: string_var80_t;                 {secondary scratch token}
   partlist_p: part_list_p_t;           {points to list of BOM parts}
   part_p, p2_p: part_p_t;              {scratch part descriptors}
-  line: sys_int_machine_t;             {output file line number being built}
   reflist_p: part_reflist_p_t;         {points to reference parts list}
   cw: csv_out_t;                       {CSV file writing state}
-  olempty: boolean;                    {output line is completely empty}
 
   msg_parm:                            {references arguments passed to a message}
     array[1..max_msg_args] of sys_parm_msg_t;
   stat: sys_err_t;                     {completion status}
 
 label
-  next_part, next_cw;
-{
-********************************************************************************
-*
-*   Subroutine PUTFIELD (F)
-*
-*   Add the string F as a new field to the end of the current output file line
-*   in BUF.
-}
-procedure putfield (                   {append field to current output line}
-  in      f: univ string_var_arg_t);   {string to append as new field}
-  val_param; internal;
+  next_cw;
 
-begin
-  if not olempty then begin            {output line is not completely empty ?}
-    string_append1 (buf, tab);         {add separator after previous field}
-    end;
-  string_append (buf, f);              {add the new field}
-  olempty := false;                    {this line is defintely not empty now}
-  end;
-{
-********************************************************************************
-*
-*   Subroutine PUTBLANK
-*
-*   Set the next field to blank.  This is the same as writing the empty string
-*   to the field.
-}
-procedure putblank;                    {write empty string to next field}
-
-var
-  s: string_var4_t;
-
-begin
-  s.max := size_char(s.str);           {build a empty string}
-  s.len := 0;
-  putfield (s);                        {write it as the value of the next field}
-  end;
-{
-********************************************************************************
-*
-*   Subroutine WOUT
-*
-*   Write the string in BUF as the next line to the output file.  BUF will be
-*   reset to empty, and LINE will be advanced to indicate the new line that will
-*   now be built.
-}
-procedure wout;                        {write BUF to output file}
-  val_param; internal;
-
-begin
-  file_write_text (buf, conn, stat);   {write line to output file}
-  sys_error_abort (stat, '', '', nil, 0);
-  buf.len := 0;                        {reset output buffer to empty}
-  line := line + 1;                    {indicate number of new line now working on}
-  olempty := true;                     {init new line as being completely empty}
-  end;
-{
-********************************************************************************
-*
-*   Start of main routine.
-}
 begin
   fnam.max := size_char(fnam.str);     {init local var strings}
+  tnam.max := size_char(tnam.str);
   gnam.max := size_char(gnam.str);
   dir.max := size_char(dir.str);
-  buf.max := size_char(buf.str);
   tk.max := size_char(tk.str);
-  tk2.max := size_char(tk2.str);
 
   string_cmline_init;                  {init for reading the command line}
   string_cmline_token (fnam, stat);    {get input file name}
@@ -116,11 +50,10 @@ begin
 
   string_pathname_split (              {make directory containing the input file}
     fnam,                              {pathname to split}
-    dir,                               {returned directory containing the file}
+    tnam,                              {returned directory containing the file}
     tk);                               {leaf name, not used}
+  string_treename (tnam, dir);         {make full directory treename}
 {
-****************************************
-*
 *   Read the input file and create the list of parts.
 }
   part_list_new (partlist_p, util_top_mem_context); {create empty parts list}
@@ -143,8 +76,6 @@ begin
   sys_msg_parm_int (msg_parm[1], partlist_p^.nparts); {show number of parts read in}
   sys_message_parms ('eagle', 'bom_ncomponents', msg_parm, 1);
 {
-****************************************
-*
 *   Add the circuit board as a special part.
 }
   part_list_ent_new_end (partlist_p^, part_p); {add new blank part to end of list}
@@ -155,10 +86,6 @@ begin
   string_copy (tk, part_p^.val);
   part_p^.flags := part_p^.flags - [part_flag_subst_k]; {not allowed to substitute}
 {
-*   All the individual components are in the list pointed to by PARTLIST_P.
-*
-****************************************
-*
 *   Read the parts reference file, if it exists, and build the list of reference
 *   parts.
 }
@@ -171,21 +98,15 @@ begin
   sys_error_abort (stat, '', '', nil, 0);
   writeln (reflist_p^.nparts, ' reference parts found');
 {
-****************************************
-*
 *   Scan the list of parts and compare each to the reference parts.  Fill in
 *   data from the reference part definition if the part matches the reference.
 }
   part_ref_apply (partlist_p^, reflist_p^);
 {
-****************************************
-*
 *   For each part, attempt to fill in some empty fields from other fields.
 }
   part_def_list (partlist_p^);         {fill in defaults from other fields as possible}
 {
-****************************************
-*
 *   Scan the list of components and determine common part usage.
 }
   part_comm_find (partlist_p^);        {find common parts}
@@ -193,354 +114,20 @@ begin
   sys_msg_parm_int (msg_parm[1], partlist_p^.nunique); {show number of unique BOM parts}
   sys_message_parms ('eagle', 'bom_nbom', msg_parm, 1);
 {
-****************************************
-*
 *   Write the <name>_BOM.TSV file.  This is the BOM ready to import into a
 *   spreadsheet.
 }
   string_pathname_join (dir, gnam, fnam); {make pathname of the output file}
-  file_open_write_text (fnam, '_bom.tsv', conn, stat); {open output file}
+  string_appends (fnam, '_bom.tsv'(0));
+
+  sys_msg_parm_vstr (msg_parm[1], fnam); {announce writing TSV file}
+  sys_message_parms ('file', 'writing_file', msg_parm, 1);
+
+  part_bom_tsv (partlist_p^, fnam, stat); {write the BOM TSV file}
   sys_error_abort (stat, '', '', nil, 0);
 {
-*   Write the column names as the first output file line.
-}
-  buf.len := 0;                        {init output line to empty}
-  line := 1;                           {init number of output line being built now}
-  olempty := true;                     {init this line is to empty}
-
-  putfield (string_v('1'));            {A, quantity in production run}
-  putfield (string_v('Qty'));          {B}
-  putfield (string_v('Designators'));  {C}
-  putfield (string_v('Desc'));         {D}
-  putfield (string_v('Value'));        {E}
-  putfield (string_v('Package'));      {F}
-  putfield (string_v('Subst'));        {G}
-  if partlist_p^.housename.len > 0
-    then begin                         {we have explicit name for in-house parts}
-      string_copy (partlist_p^.housename, tk); {init with house name}
-      string_appends (tk, ' #'(0));    {add "#"}
-      end
-    else begin                         {no housename}
-      string_vstring (tk, 'Inhouse #'(0), -1);
-      end
-    ;
-  putfield (tk);                       {H, in-house part number}
-  putfield (string_v('Manuf'));        {I}
-  putfield (string_v('Manuf part #')); {J}
-  putfield (string_v('Supplier'));     {K}
-  putfield (string_v('Supp part #'));  {L}
-  putfield (string_v('$Part'));        {M}
-  putfield (string_v('$Board'));       {N}
-  putfield (string_v('$All'));         {O}
-
-  wout;                                {write current line to output file}
-{
-*   Scan thru the components list and write one output file line for each unique
-*   part.
-}
-  part_p := partlist_p^.first_p;       {init current component to first in list}
-  while part_p <> nil do begin         {scan thru the entire list of components}
-    if part_flag_nobom_k in part_p^.flags {this part not to be added to the BOM ?}
-      then goto next_part;
-    if part_flag_comm_k in part_p^.flags then goto next_part; {already on previous line ?}
-    buf.len := 0;                      {init output line to empty}
-    {
-    *   Column A: Quantity in whole production run.  Cell A1 is the number of
-    *   units in the run.
-    }
-    string_vstring (tk, '=B'(0), -1);  {A: =Bn*A$1}
-    string_f_int (tk2, line);
-    string_append (tk, tk2);
-    string_appends (tk, '*A$1'(0));
-    putfield (tk);
-    {
-    *   Column B: Quantity per unit.
-    }
-    ii := round(part_p^.qty);          {make integer quantity}
-    if abs(part_p^.qty - ii) < 0.0001
-      then begin                       {quantity really is integer ?}
-        string_f_int (tk, ii);
-        end
-      else begin                       {quantity must be written with fraction digits}
-        string_f_fp_fixed (tk, part_p^.qty, 3);
-        end
-      ;
-    putfield (tk);                     {quantity}
-    {
-    *   Column C: List of component designators.
-    }
-    string_copy (part_p^.desig, tk);   {init designators list to first component}
-    p2_p := part_p^.same_p;            {init to second component using this part}
-    while p2_p <> nil do begin         {once for each component using this part}
-      string_append1 (tk, ' ');        {separator before new designator}
-      string_append (tk, p2_p^.desig); {add this designator}
-      p2_p := p2_p^.same_p;            {advance to next component using this part}
-      end;
-    putfield (tk);                     {list of designators using this part}
-    {
-    *   Column D: Description
-    }
-    putfield (part_p^.desc);           {part description string}
-    {
-    *   Column E: Value
-    }
-    putfield (part_p^.val);            {part value}
-    {
-    *   Column F: Package
-    }
-    putfield (part_p^.pack);           {package}
-    {
-    *   Column G: Substitution allowed yes/no
-    }
-    if part_flag_subst_k in part_p^.flags
-      then string_vstring (tk, 'Yes'(0), -1)
-      else string_vstring (tk, 'No'(0), -1);
-    putfield (tk);                     {substitution allowed Yes/No}
-    {
-    *   Column H: In-house part number.
-    }
-    putfield (part_p^.housenum);
-    {
-    *   Column I: Manufacturer name.
-    }
-    putfield (part_p^.manuf);          {manufacturer name}
-    {
-    *   Column J: Manufacturer part number.
-    }
-    putfield (part_p^.mpart);          {manufacturer part number}
-    {
-    *   Column K: Supplier name.
-    }
-    putfield (part_p^.supp);           {supplier name}
-    {
-    *   Column L: Supplier part number.
-    }
-    putfield (part_p^.spart);          {supplier part number}
-    {
-    *   Column M: Cost for each component.
-    }
-    tk.len := 0;
-    putfield (tk);                     {$ for each component}
-    {
-    *   Column N: Cost of all these parts per unit.
-    }
-    string_vstring (tk, '=B'(0), -1);  {$Board: =Bn*Mn}
-    string_f_int (tk2, line);
-    string_append (tk, tk2);
-    string_appends (tk, '*M'(0));
-    string_append (tk, tk2);
-    putfield (tk);
-    {
-    *   Column O: Cost of all these parts for all units.
-    }
-    string_vstring (tk, '=A'(0), -1);  {$All: =An*Mn}
-    string_f_int (tk2, line);
-    string_append (tk, tk2);
-    string_appends (tk, '*M'(0));
-    string_append (tk, tk2);
-    putfield (tk);
-
-    wout;                              {write this line to the output file, on to next}
-
-next_part:                             {done processing the current part}
-    part_p := part_p^.next_p;          {advance to next component}
-    end;                               {back and process this new component}
-{
-*   Write the lines for additional costs that are not parts to install on the
-*   board.
-}
-  {
-  *   Kitting cost.
-  }
-  string_vstring (tk, '=B'(0), -1);    {A, Qty/lot, =Bn*A$1}
-  string_f_int (tk2, line);
-  string_append (tk, tk2);
-  string_appends (tk, '*A$1'(0));
-  putfield (tk);
-
-  putfield (string_v('1'));            {B, quantity}
-  putblank;                            {C, designators}
-  putfield (string_v('Kitting'));      {D, description}
-
-  putblank;                            {E, value}
-  putblank;                            {F, package}
-  putblank;                            {G, substitution allowed}
-  putblank;                            {H, In-house}
-  putblank;                            {I, manufacturer}
-  putblank;                            {J, manuf part number}
-  putblank;                            {K, supplier}
-  putblank;                            {L, supplier part number}
-  putblank;                            {M, $Part}
-
-  string_vstring (tk, '=B'(0), -1);    {N, $Board, =Bn*Mn}
-  string_f_int (tk2, line);
-  string_append (tk, tk2);
-  string_appends (tk, '*M'(0));
-  string_append (tk, tk2);
-  putfield (tk);
-
-  string_vstring (tk, '=A'(0), -1);    {O, $All, =An*Mn}
-  string_f_int (tk2, line);
-  string_append (tk, tk2);
-  string_appends (tk, '*M'(0));
-  string_append (tk, tk2);
-  putfield (tk);
-
-  wout;
-  {
-  *   Manufacturing cost.
-  }
-  string_vstring (tk, '=B'(0), -1);    {A, Qty/lot, =Bn*A$1}
-  string_f_int (tk2, line);
-  string_append (tk, tk2);
-  string_appends (tk, '*A$1'(0));
-  putfield (tk);
-
-  putfield (string_v('1'));            {B, quantity}
-  putblank;                            {C, designators}
-
-  putfield (string_v('Manufacturing')); {D, description}
-
-  putblank;                            {E, value}
-  putblank;                            {F, package}
-  putblank;                            {G, substitution allowed}
-  putblank;                            {H, In-house}
-  putblank;                            {I, manufacturer}
-  putblank;                            {J, manuf part number}
-  putblank;                            {K, supplier}
-  putblank;                            {L, supplier part number}
-  putblank;                            {M, $Part}
-
-  string_vstring (tk, '=B'(0), -1);    {N, $Board, =Bn*Mn}
-  string_f_int (tk2, line);
-  string_append (tk, tk2);
-  string_appends (tk, '*M'(0));
-  string_append (tk, tk2);
-  putfield (tk);
-
-  string_vstring (tk, '=A'(0), -1);    {O, $All, =An*Mn}
-  string_f_int (tk2, line);
-  string_append (tk, tk2);
-  string_appends (tk, '*M'(0));
-  string_append (tk, tk2);
-  putfield (tk);
-
-  wout;
-  {
-  *   Testing.
-  }
-  string_vstring (tk, '=B'(0), -1);    {A, Qty/lot, =Bn*A$1}
-  string_f_int (tk2, line);
-  string_append (tk, tk2);
-  string_appends (tk, '*A$1'(0));
-  putfield (tk);
-
-  putfield (string_v('1'));            {B, quantity}
-  putblank;                            {C, designators}
-
-  putfield (string_v('Testing'));      {D, description}
-
-  putblank;                            {E, value}
-  putblank;                            {F, package}
-  putblank;                            {G, substitution allowed}
-  putblank;                            {H, In-house}
-  putblank;                            {I, manufacturer}
-  putblank;                            {J, manuf part number}
-  putblank;                            {K, supplier}
-  putblank;                            {L, supplier part number}
-  putblank;                            {M, $Part}
-
-  string_vstring (tk, '=B'(0), -1);    {N, $Board, =Bn*Mn}
-  string_f_int (tk2, line);
-  string_append (tk, tk2);
-  string_appends (tk, '*M'(0));
-  string_append (tk, tk2);
-  putfield (tk);
-
-  string_vstring (tk, '=A'(0), -1);    {O, $All, =An*Mn}
-  string_f_int (tk2, line);
-  string_append (tk, tk2);
-  string_appends (tk, '*M'(0));
-  string_append (tk, tk2);
-  putfield (tk);
-
-  wout;
-  {
-  *   Delivery.
-  }
-  string_vstring (tk, '=B'(0), -1);    {A, Qty/lot, =Bn*A$1}
-  string_f_int (tk2, line);
-  string_append (tk, tk2);
-  string_appends (tk, '*A$1'(0));
-  putfield (tk);
-
-  putfield (string_v('1'));            {B, quantity}
-  putblank;                            {C, designators}
-
-  putfield (string_v('Delivery to stock')); {D, description}
-
-  putblank;                            {E, value}
-  putblank;                            {F, package}
-  putblank;                            {G, substitution allowed}
-  putblank;                            {H, In-house}
-  putblank;                            {I, manufacturer}
-  putblank;                            {J, manuf part number}
-  putblank;                            {K, supplier}
-  putblank;                            {L, supplier part number}
-  putblank;                            {M, $Part}
-
-  string_vstring (tk, '=B'(0), -1);    {N, $Board, =Bn*Mn}
-  string_f_int (tk2, line);
-  string_append (tk, tk2);
-  string_appends (tk, '*M'(0));
-  string_append (tk, tk2);
-  putfield (tk);
-
-  string_vstring (tk, '=A'(0), -1);    {O, $All, =An*Mn}
-  string_f_int (tk2, line);
-  string_append (tk, tk2);
-  string_appends (tk, '*M'(0));
-  string_append (tk, tk2);
-  putfield (tk);
-
-  wout;
-{
-*   Write the final line that shows the total cost for the production run.
-}
-  putblank;                            {A, Qty/lot}
-  putblank;                            {B, Qty/unit}
-  putblank;                            {C, designators}
-  putblank;                            {D, description}
-  putblank;                            {E, value}
-  putblank;                            {F, package}
-  putblank;                            {G, substitution allowed}
-  putblank;                            {H, In-house}
-  putblank;                            {I, manufacturer}
-  putblank;                            {J, manuf part number}
-  putblank;                            {K, supplier}
-  putblank;                            {L, supplier part number}
-  putblank;                            {M, $Part}
-
-  string_vstring (tk, '=SUM(N2:N'(0), -1); {N, $Board, =SUM(N2:Nn)}
-  string_f_int (tk2, line-1);
-  string_append (tk, tk2);
-  string_appends (tk, ')'(0));
-  putfield (tk);
-
-  string_vstring (tk, '=SUM(O2:O'(0), -1); {O, $All, =SUM(O2:On)}
-  string_f_int (tk2, line-1);
-  string_append (tk, tk2);
-  string_appends (tk, ')'(0));
-  putfield (tk);
-
-  wout;                                {write this line to output file}
-
-  file_close (conn);                   {close the output file}
-  sys_msg_parm_vstr (msg_parm[1], conn.tnam);
-  sys_message_parms ('eagle', 'bom_outfile', msg_parm, 1);
-{
 *   Initialize the Excel spreadsheet file by copying the template.  This sets up
-*   the formatting of the cells, which would not happen if the new .CSV file was
+*   the formatting of the cells, which would not happen if the new BOM file was
 *   imported into a empty spreadsheet.
 }
   string_pathname_join (dir, gnam, fnam); {init to generic output file pathname}
