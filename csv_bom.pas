@@ -130,13 +130,7 @@ begin
 *   the formatting of the cells, which would not happen if the new BOM file was
 *   imported into a empty spreadsheet.
 }
-  string_pathname_join (dir, gnam, fnam); {init to generic output file pathname}
-  string_appends (fnam, '_bom.xls'(0)); {make spreadsheet file full pathname}
-  file_copy (                          {copy template spreadsheet file}
-    string_v('(cog)progs/eagle/bom_template.xls'(0)), {source file name}
-    fnam,                              {destination file name}
-    [file_copy_replace_k],             {overwrite existing file, if any}
-    stat);
+  part_bom_template (dir, gnam, stat); {get the BOM spreadsheet template}
   sys_error_abort (stat, '', '', nil, 0);
 {
 ****************************************
