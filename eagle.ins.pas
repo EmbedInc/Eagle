@@ -89,10 +89,15 @@ function eagle_mm_inch (               {convert from mm to inches}
   :real;                               {output in inches}
   val_param; extern;
 
+procedure eagle_parts_bom (            {read xxx_PARTS.CSV, make new BOM parts list}
+  in      fnam: univ string_var_arg_t; {name of CSV file to read, ".csv" may be omitted}
+  in out  mem: util_mem_context_t;     {parent memory context, will create subordinate}
+  out     list_p: part_list_p_t;       {returned pointer to BOM parts list}
+  out     stat: sys_err_t);            {completion status}
+  val_param; extern;
+
 procedure eagle_parts_read (           {read xxx_PARTS.CSV file written by BOM ULP}
   in      fnam: univ string_var_arg_t; {name of CSV file to read, ".csv" may be omitted}
-  in out  tnam: univ string_var_arg_t; {full treename of CSV file that was read}
-  in out  gnam: univ string_var_arg_t; {generic name, XXX in xxx_PARTS.CSV}
   in out  list: part_list_t;           {list to add to add the parts from file to}
   out     stat: sys_err_t);            {completion status}
   val_param; extern;

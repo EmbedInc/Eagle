@@ -25,6 +25,12 @@ msg err6
 /*   Messages related to reading the name_PARTS.CSV file produced by the Eagle
 /*   BOM.ULP.
 /*
+msg board_name
+  lan english -def
+    Circuit board name is "%p1s".
+msg board_nname
+  lan english -def
+    Circuit board name could not be determined.
 msg bom_nbom
   lan english -def
     %p1i unique BOM parts found.
@@ -34,3 +40,9 @@ msg bom_ncomponents
 msg housename
   lan english -def
     In-house part numbers are for the organization "%p1s".
+msg read_parts
+  lan english -def
+    Read parts file "%p1s".
+msg refparts_n
+  lan english -def
+    %p1i reference parts read.
