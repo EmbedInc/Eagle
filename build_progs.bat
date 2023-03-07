@@ -7,6 +7,6 @@ rem
 setlocal
 call build_pasinit
 
+src_progl bom_draw
 src_progl bom_labels
 src_progl csv_bom
-

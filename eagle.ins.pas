@@ -102,6 +102,12 @@ procedure eagle_parts_read (           {read xxx_PARTS.CSV file written by BOM U
   out     stat: sys_err_t);            {completion status}
   val_param; extern;
 
+procedure eagle_script_draw_bom (      {write script to draw BOM at end of schematic}
+  in      bom: part_list_t;            {BOM parts list}
+  in out  scr: eagle_scr_t;            {Eagle script writing state}
+  out     stat: sys_err_t);            {completion status}
+  val_param; extern;
+
 procedure eagle_scr_arcdir (           {write arc direction keyword, separators added}
   in out  scr: eagle_scr_t;            {script writing state}
   in      cw: boolean;                 {arc direction is clockwise}
