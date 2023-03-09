@@ -1,4 +1,4 @@
-{   Program BOM_DRAW
+{   Program BOM_DRAW [fnam]
 *
 *   Create an Eagle script to draw the BOM on additional sheets at the end of
 *   the current schematic.
@@ -21,7 +21,7 @@ const
 var
   dir: string_treename_t;              {directory containing input file}
   tnam: string_treename_t;             {full file treename}
-  lnam: string_leafname_t;             {scratch leafname}
+  fnam: string_treename_t;             {scratch file name}
   list_p: part_list_p_t;               {points to list of BOM parts}
   egl_p: eagle_p_t;                    {points to Eagle library use state}
   scr_p: eagle_scr_p_t;                {Eagle script writing state}
@@ -33,20 +33,26 @@ var
 begin
   dir.max := size_char(dir.str);       {init local var strings}
   tnam.max := size_char(tnam.str);
-  lnam.max := size_char(lnam.str);
+  fnam.max := size_char(fnam.str);
 
   string_cmline_init;                  {init for reading the command line}
+  string_cmline_token (fnam, stat);
+  if string_eos(stat) then begin
+    fnam.len := 0;
+    end;
   string_cmline_end_abort;             {no additional command line arguments allowed}
 
-  string_treename (string_v('.'), dir); {get full treename of current directory}
-  string_pathname_split (              {get directory leafname}
-    dir,                               {full input treename}
-    tnam,                              {parent tree, unused}
-    lnam);                             {bare directory leafname}
-  string_appends (lnam, '_parts.csv'); {make parts input file name}
+  if fnam.len = 0 then begin           {input file name not explicitly provided ?}
+    string_treename (string_v('.'), dir); {get full treename of current directory}
+    string_pathname_split (            {get directory leafname}
+      dir,                             {full input treename}
+      tnam,                            {parent tree, unused}
+      fnam);                           {bare directory leafname}
+    string_appends (fnam, '_parts.csv'); {make parts input file name}
+    end;
 
   eagle_parts_bom (                    {read xxx_PARTS.CSV file, make BOM parts list}
-    lnam,                              {name of file to read}
+    fnam,                              {name of file to read}
     util_top_mem_context,              {parent memory context for new lists}
     list_p,                            {returned pointer to BOM parts list}
     stat);
@@ -65,9 +71,9 @@ begin
       sys_message ('eagle', 'board_nname');
       end
     else begin                         {board name was determined}
-      string_copy (list_p^.board, lnam); {make upper case board name}
-      string_upcase (lnam);
-      sys_msg_parm_vstr (msg_parm[1], lnam);
+      string_copy (list_p^.board, fnam); {make upper case board name}
+      string_upcase (fnam);
+      sys_msg_parm_vstr (msg_parm[1], fnam);
       sys_message_parms ('eagle', 'board_name', msg_parm, 1);
       end
     ;

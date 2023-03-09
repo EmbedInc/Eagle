@@ -1,6 +1,12 @@
 module eagle_script_draw_bom;
 define eagle_script_draw_bom;
 %include 'eagle2.ins.pas';
+%include 'img.ins.pas';
+%include 'rend.ins.pas';
+
+const
+  page_dx = 10.0;                      {drawable page width}
+  page_dy = 8.0;                       {drawable page height}
 {
 ********************************************************************************
 *
@@ -16,5 +22,18 @@ procedure eagle_script_draw_bom (      {write script to draw BOM at end of schem
   val_param;
 
 begin
-  sys_error_none (stat);               {init to no error encountered}
+  eagle_rend_init (                    {set up for drawing to Eagle script}
+    0.0, page_dx,                      {left/right drawing limits}
+    0.0, page_dy,                      {bottom/top drawing limits}
+    scr,                               {script writing state}
+    stat);
+  if sys_error(stat) then return;
+
+  rend_set.enter_rend^;
+  rend_set.cpnt_2d^ (page_dx/2.0, page_dy);
+  rend_prim.vect_2d^ (0.0, page_dy/2.0);
+  rend_prim.vect_2d^ (page_dx/2.0, 0.0);
+  rend_prim.vect_2d^ (page_dx, page_dy/2.0);
+  rend_prim.vect_2d^ (page_dx/2.0, page_dy);
+  rend_set.exit_rend^;
   end;
