@@ -6,6 +6,7 @@ define eagle_cmd_hole;
 define eagle_cmd_text;
 define eagle_cmd_text_s;
 define eagle_cmd_move_cmp;
+define eagle_cmd_bend_direct;
 %include 'eagle2.ins.pas';
 {
 ********************************************************************************
@@ -147,4 +148,23 @@ begin
   if sys_error(stat) then return;
 
   eagle_scr_cmdend (scr, stat);        {end command, write to script file}
+  end;
+{
+********************************************************************************
+*
+*   Subroutine EAGLE_CMD_BEND_DIRECT (SCR, STAT)
+*
+*   Set the Eagle setting so that vectors are drawn directly from their start
+*   point to their end point.  This is opposed to settings that always draw
+*   segments horizontally or vertically, for example.
+}
+procedure eagle_cmd_bend_direct (      {setting for wires directly from start to end coor}
+  in out  scr: eagle_scr_t;            {script writing state}
+  out     stat: sys_err_t);            {completion status}
+  val_param;
+
+begin
+  eagle_scr_str (scr, 'SET WIRE_BEND 2'(0), stat);
+  if sys_error(stat) then return;
+  eagle_scr_cmdend (scr, stat);
   end;

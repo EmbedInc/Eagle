@@ -45,6 +45,11 @@ type
 {
 *   Subroutines and functions.
 }
+procedure eagle_cmd_bend_direct (      {setting for wires directly from start to end coor}
+  in out  scr: eagle_scr_t;            {script writing state}
+  out     stat: sys_err_t);            {completion status}
+  val_param; extern;
+
 procedure eagle_cmd_circle (           {write circle command to Eagle script}
   in out  scr: eagle_scr_t;            {script writing state}
   in      x, y: real;                  {center point}

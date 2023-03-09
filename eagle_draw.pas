@@ -129,7 +129,10 @@ begin
   rend_callback_vect_2dim (            {install our routine for 2DIM vector draw}
     univ_ptr(addr(eagle_draw_vect_2dim)), {our routine to call}
     draw_p);                           {context pointer to pass back}
-
+{
+*   Set Eagle state that is required for these drawing to script routines.
+}
+  eagle_cmd_bend_direct (scr, stat);   {draw straight between endpoints}
   return;                              {normal return point}
 {
 *   Error exits.  STAT has already been set to indicate the error.
