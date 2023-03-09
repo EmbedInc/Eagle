@@ -13,8 +13,20 @@ const
 
 type
   eagle_p_t = ^eagle_t;                {pointer to EAGLE library use state}
-
   eagle_scr_p_t = ^eagle_scr_t;
+  eagle_draw_p_t = ^eagle_draw_t;
+
+  eagle_draw_t = record                {state for drawing to Eagle script}
+    scr_p: eagle_scr_p_t;              {to script writing state}
+    xlft, xrit, ybot, ytop: real;      {Eagle coordinate limits drawing to}
+    dx, dy: real;                      {size of draw area}
+    rendev: rend_dev_id_t;             {RENDlib device ID}
+    tparm: rend_text_parms_t;          {text drawing control parameters}
+    vparm: rend_vect_parms_t;          {vector drawing control parameters}
+    cpnt: vect_2d_t;                   {current point from RENDlib, Eagle space}
+    moved: boolean;                    {current point moved from last draw}
+    end;
+
   eagle_scr_t = record                 {state for writing an EAGLE script file}
     next_p: eagle_scr_p_t;             {to next open script file in list}
     egl_p: eagle_p_t;                  {to library use state}
@@ -68,6 +80,30 @@ procedure eagle_cmd_text_s (           {write text command from Pascal string}
   out     stat: sys_err_t);            {completion status}
   val_param; extern;
 
+procedure eagle_draw_bom (             {write script to draw BOM at end of schematic}
+  in      bom: part_list_t;            {BOM parts list}
+  in out  scr: eagle_scr_t;            {Eagle script writing state}
+  out     stat: sys_err_t);            {completion status}
+  val_param; extern;
+
+procedure eagle_draw_cmdend (          {end any cmd in progress, write line}
+  in out  draw: eagle_draw_t;          {drawing to script state}
+  out     stat: sys_err_t);            {completion status}
+  val_param; extern;
+
+procedure eagle_draw_end (             {end drawing to Eagle script}
+  in out  draw_p: eagle_draw_p_t;      {pointer to drawing state, returned NIL}
+  out     stat: sys_err_t);            {completion status}
+  val_param; extern;
+
+procedure eagle_draw_init (            {init RENDlib, set up for writing 2D drawing to script}
+  in      xlft, xrit: real;            {left/right Eagle coordinate limits to draw to}
+  in      ybot, ytop: real;            {bottom/top Eagle coordinate limits to draw to}
+  in out  scr: eagle_scr_t;            {script to write drawing commands to}
+  out     draw_p: eagle_draw_p_t;      {returned pointer to new script drawing state}
+  out     stat: sys_err_t);            {completion status}
+  val_param; extern;
+
 function eagle_inch_mm (               {convert from inches to mm}
   in      inch: real)                  {input in inches}
   :real;                               {output in mm}
@@ -102,12 +138,6 @@ procedure eagle_parts_read (           {read xxx_PARTS.CSV file written by BOM U
   out     stat: sys_err_t);            {completion status}
   val_param; extern;
 
-procedure eagle_script_draw_bom (      {write script to draw BOM at end of schematic}
-  in      bom: part_list_t;            {BOM parts list}
-  in out  scr: eagle_scr_t;            {Eagle script writing state}
-  out     stat: sys_err_t);            {completion status}
-  val_param; extern;
-
 procedure eagle_scr_arcdir (           {write arc direction keyword, separators added}
   in out  scr: eagle_scr_t;            {script writing state}
   in      cw: boolean;                 {arc direction is clockwise}
@@ -125,7 +155,7 @@ procedure eagle_scr_close (            {close Eagle script output file}
   out     stat: sys_err_t);            {completion status}
   val_param; extern;
 
-procedure eagle_scr_cmdend (           {";" command end and write line to script file}
+procedure eagle_scr_cmdend (           {end any cmd in progress, write line}
   in out  scr: eagle_scr_t;            {script writing state}
   out     stat: sys_err_t);            {completion status}
   val_param; extern;

@@ -12,6 +12,8 @@ program bom_draw;
 %include 'math.ins.pas';
 %include 'vect.ins.pas';
 %include 'part.ins.pas';
+%include 'img.ins.pas';
+%include 'rend.ins.pas';
 %include 'eagle.ins.pas';
 
 const
@@ -111,7 +113,7 @@ begin
   sys_msg_parm_vstr (msg_parm[1], scr_p^.conn.tnam); {announce writing script file}
   sys_message_parms ('file', 'writing_file', msg_parm, 1);
 
-  eagle_script_draw_bom (              {write the scrip to draw the BOM}
+  eagle_draw_bom (                     {write the scrip to draw the BOM}
     list_p^,                           {BOM parts list}
     scr_p^,                            {Eagle script writing state}
     stat);

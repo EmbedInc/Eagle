@@ -10,11 +10,11 @@ call build_pasinit
 call src_insall %srcdir% %libname%
 
 call src_pas %srcdir% %libname%_cmd
+call src_pas %srcdir% %libname%_draw
+call src_pas %srcdir% %libname%_draw_bom
 call src_pas %srcdir% %libname%_lib
 call src_pas %srcdir% %libname%_parts
 call src_pas %srcdir% %libname%_parts_read
-call src_pas %srcdir% %libname%_rend
-call src_pas %srcdir% %libname%_script_draw_bom
 call src_pas %srcdir% %libname%_scr
 call src_pas %srcdir% %libname%_xform
 

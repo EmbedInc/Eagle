@@ -315,19 +315,26 @@ begin
 *
 *   Subroutine EAGLE_SCR_CMDEND (SCR, STAT)
 *
-*   End the current command and write the line to the script file.  SCR is the
-*   Eagle script file writing state.  The ";" command terminator is appended to
-*   the current output line before it is written to the file.
+*   End the current command if one is in progress, and write the line to the
+*   script file.  SCR is the Eagle script file writing state.  The ";" command
+*   terminator is appended to the current output line before it is written to the
+*   file.
+*
+*   Nothing is done if the current output line is empty.
 }
-procedure eagle_scr_cmdend (           {";" command end and write line to script file}
+procedure eagle_scr_cmdend (           {end any cmd in progress, write line}
   in out  scr: eagle_scr_t;            {script writing state}
   out     stat: sys_err_t);            {completion status}
   val_param;
 
 begin
-  eagle_scr_char (scr, ';', stat);     {end the command}
-  if sys_error(stat) then return;
-  eagle_scr_line (scr, stat);          {write the line to the file, reset line to empty}
+  sys_error_none (stat);               {init to no error encountered}
+
+  if scr.buf.len > 0 then begin        {command in progress ?}
+    eagle_scr_char (scr, ';', stat);   {end the command}
+    if sys_error(stat) then return;
+    eagle_scr_line (scr, stat);        {write the line to the file, reset line to empty}
+    end;
   end;
 {
 ********************************************************************************

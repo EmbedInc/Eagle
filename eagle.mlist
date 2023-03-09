@@ -1,8 +1,8 @@
 eagle_cmd.obj
+eagle_draw.obj
+eagle_draw_bom.obj
 eagle_lib.obj
 eagle_parts.obj
 eagle_parts_read.obj
-eagle_rend.obj
-eagle_script_draw_bom.obj
 eagle_scr.obj
 eagle_xform.obj

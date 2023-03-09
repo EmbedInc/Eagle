@@ -12,6 +12,8 @@ program csv_bom;
 %include 'math.ins.pas';
 %include 'vect.ins.pas';
 %include 'part.ins.pas';
+%include 'img.ins.pas';
+%include 'rend.ins.pas';
 %include 'eagle.ins.pas';
 
 const
