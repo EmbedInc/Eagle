@@ -3,6 +3,7 @@
 module eagle_draw;
 define eagle_draw_init;
 define eagle_draw_end;
+define eagle_draw_update;
 define eagle_draw_cpnt_2dim;
 define eagle_draw_vect_2dim;
 define eagle_draw_cmdend;
@@ -123,12 +124,7 @@ begin
   draw_p^.vparm.subpixel := false;
   rend_set.vect_parms^ (draw_p^.vparm);
 
-  rend_callback_cpnt_2dim (            {install our routine for 2DIM current point}
-    univ_ptr(addr(eagle_draw_cpnt_2dim)), {our routine to call}
-    draw_p);                           {context pointer to pass back}
-  rend_callback_vect_2dim (            {install our routine for 2DIM vector draw}
-    univ_ptr(addr(eagle_draw_vect_2dim)), {our routine to call}
-    draw_p);                           {context pointer to pass back}
+  eagle_draw_update (draw_p^);         {set up callbacks}
 {
 *   Set Eagle state that is required for these drawing to script routines.
 }
@@ -164,6 +160,28 @@ begin
 
   scr_p := draw_p^.scr_p;              {save pointer to the script writing state}
   util_mem_ungrab (draw_p, scr_p^.egl_p^.mem_p^); {deallocate drawing state}
+  end;
+{
+********************************************************************************
+*
+*   Subroutine EAGLE_DRAW_UPDATE (DRAW)
+*
+*   Update to RENDlib settings were made.  Calling some RENDlib setting routines
+*   can undo configuration state we need.  This routine restores those
+*   configuration settings.
+}
+procedure eagle_draw_update (          {update RENDlib to setting were made}
+  in out  draw: eagle_draw_t);         {drawing to script state}
+  val_param;
+
+begin
+  rend_callback_cpnt_2dim (            {install our routine for 2DIM current point}
+    univ_ptr(addr(eagle_draw_cpnt_2dim)), {our routine to call}
+    addr(draw));                       {context pointer to pass back}
+
+  rend_callback_vect_2dim (            {install our routine for 2DIM vector draw}
+    univ_ptr(addr(eagle_draw_vect_2dim)), {our routine to call}
+    addr(draw));                       {context pointer to pass back}
   end;
 {
 ********************************************************************************

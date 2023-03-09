@@ -31,12 +31,23 @@ begin
     stat);
   if sys_error(stat) then return;
 
+  eagle_scr_strline (scr, 'change layer info;', stat);
+  if sys_error(stat) then return;
+
   rend_set.enter_rend^;
   rend_set.cpnt_2d^ (page_dx/2.0, page_dy);
   rend_prim.vect_2d^ (0.0, page_dy/2.0);
   rend_prim.vect_2d^ (page_dx/2.0, 0.0);
   rend_prim.vect_2d^ (page_dx, page_dy/2.0);
   rend_prim.vect_2d^ (page_dx/2.0, page_dy);
+
+  eagle_draw_text_size (draw_p^, 0.1);
+  eagle_draw_text_anchor (draw_p^, rend_torg_um_k);
+
+  rend_set.cpnt_2d^ (5.0, 7.0);
+  eagle_draw_text (draw_p^, string_v('This is a test'));
+  eagle_draw_text (draw_p^, string_v('Second line of text'));
+
   rend_set.exit_rend^;
 
   eagle_draw_end (draw_p, stat);       {end drawing to the Eagle script}

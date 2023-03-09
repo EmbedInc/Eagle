@@ -85,6 +85,10 @@ procedure eagle_cmd_text_s (           {write text command from Pascal string}
   out     stat: sys_err_t);            {completion status}
   val_param; extern;
 
+procedure eagle_draw_update (          {update RENDlib to setting were made}
+  in out  draw: eagle_draw_t);         {drawing to script state}
+  val_param; extern;
+
 procedure eagle_draw_bom (             {write script to draw BOM at end of schematic}
   in      bom: part_list_t;            {BOM parts list}
   in out  scr: eagle_scr_t;            {Eagle script writing state}
@@ -107,6 +111,21 @@ procedure eagle_draw_init (            {init RENDlib, set up for writing 2D draw
   in out  scr: eagle_scr_t;            {script to write drawing commands to}
   out     draw_p: eagle_draw_p_t;      {returned pointer to new script drawing state}
   out     stat: sys_err_t);            {completion status}
+  val_param; extern;
+
+procedure eagle_draw_text (            {draw text string, curr point done one line}
+  in out  draw: eagle_draw_t;          {drawing to script state}
+  in      str: univ string_var_arg_t); {text string to draw}
+  val_param; extern;
+
+procedure eagle_draw_text_anchor (     {set where text string anchored to current point}
+  in out  draw: eagle_draw_t;          {drawing to script state}
+  in      anch: rend_torg_k_t);        {anchor position ID}
+  val_param; extern;
+
+procedure eagle_draw_text_size (       {set text size}
+  in out  draw: eagle_draw_t;          {drawing to script state}
+  in      size: real);                 {height of full size letter without decender}
   val_param; extern;
 
 function eagle_inch_mm (               {convert from inches to mm}
