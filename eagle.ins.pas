@@ -145,6 +145,11 @@ procedure eagle_draw_text_size (       {set text size}
   in      size: real);                 {height of full size letter without decender}
   val_param; extern;
 
+procedure eagle_draw_thick (           {set line thickness for subsequent drawing}
+  in out  draw: eagle_draw_t;          {drawing to script state}
+  in      thick: real);                {new line thickness}
+  val_param; extern;
+
 function eagle_inch_mm (               {convert from inches to mm}
   in      inch: real)                  {input in inches}
   :real;                               {output in mm}

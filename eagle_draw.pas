@@ -4,9 +4,10 @@ module eagle_draw;
 define eagle_draw_init;
 define eagle_draw_end;
 define eagle_draw_update;
+define eagle_draw_cmdend;
+define eagle_draw_thick;
 define eagle_draw_cpnt_2dim;
 define eagle_draw_vect_2dim;
-define eagle_draw_cmdend;
 %include 'eagle2.ins.pas';
 
 const
@@ -220,6 +221,31 @@ begin
   if sys_error(stat) then return;
 
   draw.moved := true;                  {force new WIRE command next vector}
+  end;
+{
+********************************************************************************
+*
+*   Subroutine EAGLE_DRAW_THICK (DRAW, THICK)
+*
+*   Set the line thickness for subsequent vectors.
+}
+procedure eagle_draw_thick (           {set line thickness for subsequent drawing}
+  in out  draw: eagle_draw_t;          {drawing to script state}
+  in      thick: real);                {new line thickness}
+  val_param;
+
+var
+  stat: sys_err_t;
+
+begin
+  eagle_draw_cmdend (draw, stat);      {end any command in progress}
+  sys_error_abort (stat, '', '', nil, 0);
+
+  eagle_cmd_thick (                    {write Eagle line thickness command}
+    draw.scr_p^,                       {script writing state}
+    thick,                             {new line thickness setting}
+    stat);
+  sys_error_abort (stat, '', '', nil, 0);
   end;
 {
 ********************************************************************************
