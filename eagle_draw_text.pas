@@ -2,7 +2,9 @@
 }
 module eagle_draw_text;
 define eagle_draw_text_size;
+define eagle_draw_text_bold;
 define eagle_draw_text_anchor;
+define eagle_draw_text_setup;
 define eagle_draw_text;
 %include 'eagle2.ins.pas';
 {
@@ -22,6 +24,27 @@ procedure eagle_draw_text_size (       {set text size}
 begin
   draw.tparm.size := size;             {set new state in our text parameters}
   rend_set.text_parms^ (draw.tparm);   {update the RENDlib text control state}
+  eagle_draw_text_setup (draw);        {update Eagle state to new text size}
+  end;
+{
+********************************************************************************
+*
+*   Subroutine EAGLE_DRAW_TEXT_BOLD (DRAW, BOLDFR)
+*
+*   Set the boldness that subsequent text will be drawn with.  DRAW is the Eagle
+*   script drawing state.  BOLDFR is the line thickness to draw text with, as
+*   a fraction of the text size.  This boldness setting will be saved, and the
+*   line thickness automatically adjusted whenever the text size is changed.
+}
+procedure eagle_draw_text_bold (       {set text boldness}
+  in out  draw: eagle_draw_t;          {drawing to script state}
+  in      boldfr: real);               {line thickness as fraction of text size}
+  val_param;
+
+begin
+  draw.boldfr := boldfr;               {save new boldness fraction}
+
+  eagle_draw_text_setup (draw);        {update Eagle state to new text size}
   end;
 {
 ********************************************************************************
@@ -43,6 +66,36 @@ begin
   draw.tparm.start_org := anch;        {set new state in our text parameters}
   draw.tparm.end_org := rend_torg_down_k;
   rend_set.text_parms^ (draw.tparm);   {update the RENDlib text control state}
+  end;
+{
+********************************************************************************
+*
+*   Local subroutine EAGLE_DRAW_TEXT_SETUP (DRAW)
+*
+*   Set up Eagle state for drawing text according to the current text
+*   parameters.  Some Eagle parameters may be set independently and used for
+*   drawing other than text.  Those parameters that text drawing is dependent on
+*   are set here.  Specifically, the following Eagle state is set:
+*
+*     Line thickness  -  Derived from text size and boldness.
+*
+*   This routine does not need to be called after changing text parameters.
+*   Eagle state required for text is automatically set when text parameters are
+*   changed.
+}
+procedure eagle_draw_text_setup (      {set up Eagle state for drawing text}
+  in out  draw: eagle_draw_t);         {drawing to script state}
+  val_param;
+
+var
+  stat: sys_err_t;
+
+begin
+  eagle_cmd_thick (                    {write Eagle line thickness command}
+    draw.scr_p^,                       {script writing state}
+    draw.tparm.size * draw.boldfr,     {new line thickness}
+    stat);
+  sys_error_abort (stat, '', '', nil, 0);
   end;
 {
 ********************************************************************************

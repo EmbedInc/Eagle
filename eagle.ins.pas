@@ -22,6 +22,7 @@ type
     dx, dy: real;                      {size of draw area}
     rendev: rend_dev_id_t;             {RENDlib device ID}
     tparm: rend_text_parms_t;          {text drawing control parameters}
+    boldfr: real;                      {text boldness, thickness fraction of size}
     vparm: rend_vect_parms_t;          {vector drawing control parameters}
     cpnt: vect_2d_t;                   {current point from RENDlib, Eagle space}
     moved: boolean;                    {current point moved from last draw}
@@ -30,6 +31,7 @@ type
   eagle_scr_t = record                 {state for writing an EAGLE script file}
     next_p: eagle_scr_p_t;             {to next open script file in list}
     egl_p: eagle_p_t;                  {to library use state}
+    thick: real;                       {current line thickness, < 0 for unknown}
     conn: file_conn_t;                 {connection to .SCR output file}
     buf: string_var8192_t;             {one line output buffer}
     echout: boolean;                   {echo wcript writing to STDOUT}
@@ -85,6 +87,12 @@ procedure eagle_cmd_text_s (           {write text command from Pascal string}
   out     stat: sys_err_t);            {completion status}
   val_param; extern;
 
+procedure eagle_cmd_thick (            {write command to set line thickness}
+  in out  scr: eagle_scr_t;            {script writing state}
+  in      thick: real;                 {new line thickness}
+  out     stat: sys_err_t);            {completion status}
+  val_param; extern;
+
 procedure eagle_draw_update (          {update RENDlib to setting were made}
   in out  draw: eagle_draw_t);         {drawing to script state}
   val_param; extern;
@@ -121,6 +129,15 @@ procedure eagle_draw_text (            {draw text string, curr point done one li
 procedure eagle_draw_text_anchor (     {set where text string anchored to current point}
   in out  draw: eagle_draw_t;          {drawing to script state}
   in      anch: rend_torg_k_t);        {anchor position ID}
+  val_param; extern;
+
+procedure eagle_draw_text_bold (       {set text boldness}
+  in out  draw: eagle_draw_t;          {drawing to script state}
+  in      boldfr: real);               {line thickness as fraction of text size}
+  val_param; extern;
+
+procedure eagle_draw_text_setup (      {set up Eagle state for drawing text}
+  in out  draw: eagle_draw_t);         {drawing to script state}
   val_param; extern;
 
 procedure eagle_draw_text_size (       {set text size}

@@ -7,6 +7,7 @@ define eagle_cmd_text;
 define eagle_cmd_text_s;
 define eagle_cmd_move_cmp;
 define eagle_cmd_bend_direct;
+define eagle_cmd_thick;
 %include 'eagle2.ins.pas';
 {
 ********************************************************************************
@@ -167,4 +168,32 @@ begin
   eagle_scr_str (scr, 'SET WIRE_BEND 2'(0), stat);
   if sys_error(stat) then return;
   eagle_scr_cmdend (scr, stat);
+  end;
+{
+********************************************************************************
+*
+*   Subroutine EAGLE_CMD_THICK (SCR, THICK, STAT)
+*
+*   Set the Eagle line thickness to THICK.
+}
+procedure eagle_cmd_thick (            {write command to set line thickness}
+  in out  scr: eagle_scr_t;            {script writing state}
+  in      thick: real;                 {new line thickness}
+  out     stat: sys_err_t);            {completion status}
+  val_param;
+
+begin
+  if scr.thick = thick then begin      {already set to this thickness ?}
+    sys_error_none (stat);
+    return;
+    end;
+
+  eagle_scr_str (scr, 'CHANGE WIDTH '(0), stat);
+  if sys_error(stat) then return;
+  eagle_scr_fp (scr, thick, 4, stat);
+  if sys_error(stat) then return;
+  eagle_scr_cmdend (scr, stat);
+  if sys_error(stat) then return;
+
+  scr.thick := thick;                  {remember new thickness setting}
   end;

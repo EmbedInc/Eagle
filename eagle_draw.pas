@@ -11,6 +11,7 @@ define eagle_draw_cmdend;
 
 const
   text_size = 0.075;                   {default text size in Eagle coor}
+  text_bold = 0.12;                    {default text boldness}
   pixu = 100.0;                        {virtual pixels per Eagle unit}
 
 var
@@ -118,6 +119,7 @@ begin
   draw_p^.tparm.coor_level := rend_space_2d_k;
   draw_p^.tparm.poly := false;
   rend_set.text_parms^ (draw_p^.tparm);
+  draw_p^.boldfr := text_bold;
 
   rend_get.vect_parms^ (draw_p^.vparm);
   draw_p^.vparm.poly_level := rend_space_none_k;
