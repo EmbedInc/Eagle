@@ -8,6 +8,68 @@ const
 {
 ********************************************************************************
 *
+*   Local Subroutine NEW_PAGE (DRAW)
+*
+*   Start a new page at the end of the Eagle schematic.  The page will be
+*   initialized with the standard IS frame.
+}
+procedure new_page (                   {create and init new page at end of schematic}
+  in out  draw: eagle_draw_t);         {drawing to Eagle script state}
+  val_param; internal;
+
+var
+  stat: sys_err_t;
+
+begin
+  eagle_draw_cmdend (draw, stat);      {end any command in progress}
+  sys_error_abort (stat, '', '', nil, 0);
+
+  eagle_scr_strline (draw.scr_p^,      {create new sheet at end of schematic}
+    'edit .s9999;',
+    stat);
+  sys_error_abort (stat, '', '', nil, 0);
+
+  eagle_scr_strline (draw.scr_p^,      {add the IS frame}
+    'add FRAME-8X10-IS-H@Symbols (0 0);',
+    stat);
+  sys_error_abort (stat, '', '', nil, 0);
+
+  eagle_scr_strline (draw.scr_p^,      {zoom to fit the frame in the window}
+    'window fit;',
+    stat);
+  sys_error_abort (stat, '', '', nil, 0);
+
+  eagle_scr_strline (draw.scr_p^,      {set our assumed grid units}
+    'grid inch .1 1 dots on;',
+    stat);
+  sys_error_abort (stat, '', '', nil, 0);
+
+  eagle_scr_strline (draw.scr_p^,      {init to draw into the INFO layer}
+    'change layer info;',
+    stat);
+  sys_error_abort (stat, '', '', nil, 0);
+
+  eagle_scr_strline (draw.scr_p^,      {configure text for page description}
+    'change size 0.095;',
+    stat);
+  sys_error_abort (stat, '', '', nil, 0);
+  eagle_scr_strline (draw.scr_p^,
+    'change ratio 8;',
+    stat);
+  sys_error_abort (stat, '', '', nil, 0);
+  eagle_scr_strline (draw.scr_p^,
+    'change align left center;',
+    stat);
+  sys_error_abort (stat, '', '', nil, 0);
+
+  eagle_scr_strline (draw.scr_p^,      {write the page description text}
+    'text ''Bill of Materials'' (6.525 .08);',
+    stat);
+  sys_error_abort (stat, '', '', nil, 0);
+  end;
+{
+********************************************************************************
+*
 *   Subroutine EAGLE_DRAW_BOM (BOM, SCR, STAT)
 *
 *   Write script to draw a BOM at the end of the current schematic.  BOM is the
@@ -31,17 +93,9 @@ begin
     stat);
   if sys_error(stat) then return;
 
-  eagle_scr_strline (scr, 'change layer info;', stat);
-  if sys_error(stat) then return;
-  eagle_cmd_thick (scr, 0.006, stat);
-  if sys_error(stat) then return;
-
   rend_set.enter_rend^;
-  rend_set.cpnt_2d^ (page_dx/2.0, page_dy);
-  rend_prim.vect_2d^ (0.0, page_dy/2.0);
-  rend_prim.vect_2d^ (page_dx/2.0, 0.0);
-  rend_prim.vect_2d^ (page_dx, page_dy/2.0);
-  rend_prim.vect_2d^ (page_dx/2.0, page_dy);
+
+  new_page (draw_p^);                  {create and init new schematic page}
 
   eagle_draw_text_size (draw_p^, 0.1);
   eagle_draw_text_anchor (draw_p^, rend_torg_um_k);
@@ -50,6 +104,5 @@ begin
   eagle_draw_text (draw_p^, string_v('XX//gggjjjiii'));
 
   rend_set.exit_rend^;
-
   eagle_draw_end (draw_p, stat);       {end drawing to the Eagle script}
   end;
