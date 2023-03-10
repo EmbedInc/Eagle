@@ -267,6 +267,20 @@ procedure eagle_scr_xy (               {write X,Y coor in Eagle format to script
   out     stat: sys_err_t);            {completion status}
   val_param; extern;
 
+procedure eagle_textwrap_draw (        {draw wrapped text to Eagle script}
+  in out  draw: eagle_draw_t;          {drawing to script state}
+  in      text: univ string_var_arg_t; {the text to draw}
+  in      width: real;                 {max allowed width, wrap to new line as needed}
+  out     nlines: sys_int_machine_t);  {total number of lines used}
+  val_param; extern;
+
+procedure eagle_textwrap_nlines (      {find number of lines to draw wrapped text}
+  in out  draw: eagle_draw_t;          {drawing to script state}
+  in      text: univ string_var_arg_t; {the text to draw}
+  in      width: real;                 {max allowed width, wrap to new line as needed}
+  out     nlines: sys_int_machine_t);  {total number of lines required}
+  val_param; extern;
+
 procedure eagle_xform_get (            {get copy of current 2D transform}
   in out  egl: eagle_t;                {state for use of this library}
   out     xf: vect_xf2d_t);            {returned 2D transform}

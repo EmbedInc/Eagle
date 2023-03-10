@@ -17,6 +17,7 @@ call src_pas %srcdir% %libname%_lib
 call src_pas %srcdir% %libname%_parts
 call src_pas %srcdir% %libname%_parts_read
 call src_pas %srcdir% %libname%_scr
+call src_pas %srcdir% %libname%_textwrap
 call src_pas %srcdir% %libname%_xform
 
 call src_lib %srcdir% %libname%

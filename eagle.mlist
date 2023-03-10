@@ -6,4 +6,5 @@ eagle_lib.obj
 eagle_parts.obj
 eagle_parts_read.obj
 eagle_scr.obj
+eagle_textwrap.obj
 eagle_xform.obj

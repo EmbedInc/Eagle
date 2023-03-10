@@ -83,8 +83,12 @@ procedure eagle_draw_bom (             {write script to draw BOM at end of schem
 
 var
   draw_p: eagle_draw_p_t;              {to drawing into script state}
+  text: string_var8192_t;              {test text string}
+  nlines: sys_int_machine_t;           {number of lines of wrapped text}
 
 begin
+  text.max := size_char(text.str);     {init local var string}
+
   eagle_draw_init (                    {set up for drawing to Eagle script}
     0.0, page_dx,                      {left/right drawing limits}
     0.0, page_dy,                      {bottom/top drawing limits}
@@ -94,14 +98,23 @@ begin
   if sys_error(stat) then return;
 
   rend_set.enter_rend^;
-
   new_page (draw_p^);                  {create and init new schematic page}
 
+  text.len := 0;                       {make long text string to test wrapping}
+  string_appends (text, 'Four score and twenty years ago, '(0));
+  string_appends (text, 'our fathers brought forth on this continent a new nation '(0));
+  string_appends (text, 'dedicated to the proposition that all men are create '(0));
+  string_appends (text, 'mostly equal.'(0));
+
   eagle_draw_text_size (draw_p^, 0.1);
-  eagle_draw_text_anchor (draw_p^, rend_torg_um_k);
-  rend_set.cpnt_2d^ (5.0, 7.0);
-  eagle_draw_text (draw_p^, string_v('Test ggg ///'));
-  eagle_draw_text (draw_p^, string_v('XX//gggjjjiii'));
+  eagle_draw_text_anchor (draw_p^, rend_torg_ul_k);
+  rend_set.cpnt_2d^ (1.0, 7.0);
+  eagle_textwrap_draw (                {draw long text, wrap to multip lines}
+    draw_p^,                           {drawing to script state}
+    text,                              {the text to draw}
+    2.0,                               {max width allowed each line}
+    nlines);                           {number of lines actually written}
+  writeln ('NLINES = ', nlines);
 
   rend_set.exit_rend^;
   eagle_draw_end (draw_p, stat);       {end drawing to the Eagle script}
