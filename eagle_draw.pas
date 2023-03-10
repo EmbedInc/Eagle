@@ -11,7 +11,7 @@ define eagle_draw_cmdend;
 
 const
   text_size = 0.075;                   {default text size in Eagle coor}
-  text_bold = 0.12;                    {default text boldness}
+  text_bold = 0.10;                    {default text boldness}
   pixu = 100.0;                        {virtual pixels per Eagle unit}
 
 var

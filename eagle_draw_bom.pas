@@ -33,6 +33,8 @@ begin
 
   eagle_scr_strline (scr, 'change layer info;', stat);
   if sys_error(stat) then return;
+  eagle_cmd_thick (scr, 0.006, stat);
+  if sys_error(stat) then return;
 
   rend_set.enter_rend^;
   rend_set.cpnt_2d^ (page_dx/2.0, page_dy);
@@ -43,10 +45,9 @@ begin
 
   eagle_draw_text_size (draw_p^, 0.1);
   eagle_draw_text_anchor (draw_p^, rend_torg_um_k);
-
   rend_set.cpnt_2d^ (5.0, 7.0);
-  eagle_draw_text (draw_p^, string_v('This is a test'));
-  eagle_draw_text (draw_p^, string_v('Second line of text'));
+  eagle_draw_text (draw_p^, string_v('Test ggg ///'));
+  eagle_draw_text (draw_p^, string_v('XX//gggjjjiii'));
 
   rend_set.exit_rend^;
 

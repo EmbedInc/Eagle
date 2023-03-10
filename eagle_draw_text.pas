@@ -91,6 +91,9 @@ var
   stat: sys_err_t;
 
 begin
+  eagle_draw_cmdend (draw, stat);      {end any command in progress}
+  sys_error_abort (stat, '', '', nil, 0);
+
   eagle_cmd_thick (                    {write Eagle line thickness command}
     draw.scr_p^,                       {script writing state}
     draw.tparm.size * draw.boldfr,     {new line thickness}
