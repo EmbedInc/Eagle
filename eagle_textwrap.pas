@@ -43,6 +43,7 @@ var
   yb: vect_2d_t;                       {y basis vector for text string}
   ll: vect_2d_t;                       {lower left corner of text string}
   lnwidth: real;                       {width of string in LN}
+  wbreak: boolean;                     {wrap break encountered, FITLEN before break}
 
 label
   leave;
@@ -52,32 +53,45 @@ begin
 
   ln.len := 0;                         {init output line to empty}
   fitlen := 0;
+  wbreak := false;                     {init to no wrap break encountered yet}
+
   while p <= text.len do begin         {scan up to end of input string}
     c := text.str[p];                  {get this input string character}
-    p := p + 1;                        {advance parse index for next character}
-    if (c = ' ') and (ln.len = 0)      {compress out leading spaces}
-      then next;
-    string_append1 (ln, c);            {add this character to line being built}
-    if ln.len = 1 then begin           {this is first character on line ?}
-      fitlen := 1;                     {it fits whether it fits or not}
-      fitp := p;                       {save parse index for after fit}
-      next;
-      end;
-    if c = ' ' then begin              {this character is a blank ?}
-      fitlen := ln.len - 1;            {fits to previous character}
-      fitp := p;                       {save parse index at fit}
-      next;
-      end;
-    rend_get.txbox_txdraw^ (           {get size of line so far}
-      ln.str, ln.len,                  {the text string to measure}
-      xb, yb,                          {returned X and Y basis vectors}
-      ll);                             {returned lower left coordinate}
-    lnwidth := sqrt(sqr(xb.x) + sqr(xb.y)); {length along text baseline}
-    if lnwidth > width then begin      {too wide with this last character ?}
-      ln.len := fitlen;                {truncate to what did fit}
-      p := fitp;                       {restart after fit next line}
-      exit;                            {done building candidate line in LN}
-      end;
+    if c = ' '
+      then begin                       {this char is a wrap break}
+        p := p + 1;                    {don't parse this space again}
+        if ln.len = 0 then next;       {compress out leading spaces}
+        fitlen := ln.len;              {save end of string before break}
+        fitp := p;                     {where to resume parsing after break}
+        wbreak := true;                {remember that a break was found}
+        string_append1 (ln, c);        {add the blank to the output string}
+        next;
+        end
+      else begin                       {this is a hard character}
+        string_append1 (ln, c);        {try with this character added}
+        rend_get.txbox_txdraw^ (       {get size with this new char}
+          ln.str, ln.len,              {the text string to measure}
+          xb, yb,                      {returned X and Y basis vectors}
+          ll);                         {returned lower left coordinate}
+        lnwidth := sqrt(sqr(xb.x) + sqr(xb.y)); {length along text baseline}
+        if                             {this char makes the line too long ?}
+            (lnwidth > width) and      {the line is now too long ?}
+            (ln.len > 1)               {it has a character that can be removed}
+            then begin
+          if wbreak
+            then begin                 {there was a previous break}
+              ln.len := fitlen;        {truncate to before the break}
+              p := fitp;               {restart parsing right after the break}
+              end
+            else begin                 {there was no break to wrap line at}
+              ln.len := ln.len - 1;    {remove this last char}
+              end
+            ;
+          goto leave;
+          end;
+        p := p + 1;                    {advance to next input string char}
+        end
+      ;
     end;                               {back for next input string character}
 
 leave:                                 {common exit point}

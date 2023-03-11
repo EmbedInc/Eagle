@@ -12,7 +12,7 @@ const
   linwid = 0.007;                      {line width for basic lines}
 
   mar_lft = 0.025;                     {left text margin, fraction of size}
-  mar_rit = 0.025;                     {right text margin, fracation of size}
+  mar_rit = 0.020;                     {right text margin, fraction of size}
   mar_top = 0.030;                     {top text margin, fraction of size}
   mar_bot = 0.045;                     {bottom text margin, fraction of size}
 
@@ -42,14 +42,14 @@ var
     'Supp #',                          {10}
     ];
   col_width: col_width_t := [          {column widths}
-    0.4,                               {quantity}
-    1.2,                               {component designators}
-    1.8,                               {description}
-    0.9,                               {value}
-    0.6,                               {package}
-    0.5,                               {in-house part number}
+    0.3,                               {quantity}
+    1.5,                               {component designators}
+    1.2,                               {description}
+    1.2,                               {value}
+    0.7,                               {package}
+    0.6,                               {in-house part number}
     0.8,                               {manufacturer}
-    1.4,                               {manufacturer part number}
+    1.3,                               {manufacturer part number}
     0.8,                               {supplier}
     1.4,                               {supplier part number}
     ];
@@ -141,7 +141,7 @@ begin
 *
 *   Local subroutine HEADERS (DRAW, CURRY)
 *
-*   Draw the headers for the BOM columns.  CURRY is the current Y coordinage on
+*   Draw the headers for the BOM columns.  CURRY is the current Y coordinate on
 *   the page.  It is updated to the top Y of the next row to draw.  The text
 *   state is left ready for writing a BOM row.
 }
@@ -177,7 +177,7 @@ begin
 {
 *   Draw the line under the column names and update CURRY.
 }
-  curry := curry - lines_height (draw, 1); {down one line with margins}
+  curry := curry - draw.tparm.size - mar_bot;
   eagle_draw_thick (draw, linwid);     {set line thickness}
   rend_set.cpnt_2d^ (col_lft, curry);  {draw the horizontal line}
   rend_prim.vect_2d^ (col_rit, curry);
@@ -198,7 +198,36 @@ procedure page_finish (                {finish drawing the current page}
   in out  curry: real);                {current Y for the page}
   val_param; internal;
 
+var
+  topy: real;                          {Y at top of separator lines}
+  x: real;                             {current X coordinate}
+  col: sys_int_machine_t;              {1-N column number}
+
 begin
+{
+*   Draw the vertical separators between fields.
+}
+  eagle_draw_thick (draw, linwid);     {set line thickness}
+  topy := page_top - draw.tparm.size - mar_bot; {Y for top of lines}
+  x := col_lft;                        {init to left-most line}
+
+  for col := 1 to ncol+1 do begin      {once for each vertical line}
+    rend_set.cpnt_2d^ (x, topy);       {draw this line}
+    rend_prim.vect_2d^ (x, curry);
+    if col <= ncol then begin
+      x := x + col_width[col];         {advance across over this field}
+      end;
+    end;                               {back for next vertical line}
+{
+*   Write footnote about parts critical to intrinsic safety.
+}
+  eagle_draw_text_anchor (draw, rend_torg_ul_k); {anchor text in upper left corner}
+  rend_set.cpnt_2d^ (
+    col_lft + col_width[1] + mar_lft,
+    curry - mar_top - (draw.tparm.size * 0.5));
+  eagle_draw_text (draw,
+    string_v('* Denotes part critical to Instrinsic Safety'(0))
+    );
   end;
 {
 ********************************************************************************
@@ -230,18 +259,169 @@ begin
 {
 ********************************************************************************
 *
+*   Local subroutine FIELD_TEXT_GET (DRAW, PART, COL, TEXT)
+*
+*   Get the text for a BOM field.  DRAW is the state for drawing to an Eagle
+*   script.  PART is the part for the BOM row.  COL is the 1-NCOL number of the
+*   BOM column to generate the text for.  TEXT is returned the generated text.
+}
+procedure field_text_get (             {get text for one BOM field}
+  in      draw: eagle_draw_t;          {state for drawing to Eagle script}
+  in var  part: part_t;                {part the BOM row is for}
+  in      col: sys_int_machine_t;      {1-NCOL column number of selected field}
+  in out  text: univ string_var_arg_t); {returned text for the selected field}
+  val_param; internal;
+
+const
+  ohmchar = 7;                         {char code for Ohm symbol in this font}
+
+var
+  ii: sys_int_machine_t;               {scratch integer}
+  c: char;                             {scratch character}
+  prt2_p: part_p_t;                    {to secondary part in list}
+
+begin
+  case col of                          {which field ?}
+{
+*   Quantity.
+}
+1: begin
+  ii := round(part.qty);
+  if abs(part.qty - ii) < 0.0001
+    then begin                         {integer quantity}
+      string_f_int (text, ii);
+      end
+    else begin                         {floating point quantity}
+      string_f_fp_free (text, part.qty, 5);
+      end
+    ;
+  end;
+{
+*   Designators.
+}
+2: begin
+  text.len := 0;                       {init designator list to empty}
+  prt2_p := addr(part);                {init to start of common parts chain}
+  while prt2_p <> nil do begin         {scan the common parts chain}
+    if text.len > 0 then begin
+      string_append1 (text, ' ');      {add separator after previous designator}
+      end;
+    string_append (text, prt2_p^.desig); {add this designator}
+    if part_flag_isafe_k in prt2_p^.flags then begin {IS-critical ?}
+      string_append1 (text, '*');
+      end;
+    prt2_p := prt2_p^.same_p;          {to next of this common part}
+    end;                               {back to do this new common part}
+  end;
+{
+*   Description.
+}
+3: begin
+  string_copy (part.desc, text);
+  end;
+{
+*   Value.
+}
+4: begin
+  text.len := 0;                       {init result string to empty}
+  ii := 1;                             {init source string index}
+  while ii <= part.val.len do begin    {scan the source string}
+    c := part.val.str[ii];             {fetch this character}
+    ii := ii + 1;                      {advance index to next}
+    if                                 {check for "Ohm"}
+        (c = 'O') and                  {current char is start of "Ohm" ?}
+        (ii <= (part.val.len - 1)) and then {enough characters left ?}
+        (part.val.str[ii] = 'h') and   {the next characters match ?}
+        (part.val.str[ii+1] = 'm')
+        then begin
+      string_append1 (text, chr(ohmchar)); {replace with Ohm character}
+      ii := ii + 2;                    {skip over "Ohm" in source string}
+      if                               {next character is optional "s" ?}
+          (ii <= part.val.len) and then {room left in source string}
+          (part.val.str[ii] = 's')     {next char is "s" ?}
+          then begin
+        ii := ii + 1;                  {skip over the "s" after "Ohm"}
+        end;
+      next;                            {on to next source character}
+      end;
+    string_append1 (text, c);          {append this char to result string}
+    end;                               {back for next source string char}
+  end;
+{
+*   Package.
+}
+5: begin
+  string_copy (part.pack, text);
+  end;
+{
+*   In-house part number.
+}
+6: begin
+  string_copy (part.housenum, text);
+  end;
+{
+*   Manufacturer.
+}
+7: begin
+  string_copy (part.manuf, text);
+  end;
+{
+*   Manufacturer part number.
+}
+8: begin
+  string_copy (part.mpart, text);
+  end;
+{
+*   Supplier.
+}
+9: begin
+  string_copy (part.supp, text);
+  end;
+{
+*   Supplier part number.
+}
+10: begin
+  string_copy (part.spart, text);
+  end;
+
+otherwise                              {unexpected field number}
+    text.len := 0;                     {return the empty string}
+    end;
+  end;
+{
+********************************************************************************
+*
 *   Local function ROW_HEIGHT (DRAW, PART)
 *
 *   Find the height required to draw the BOM row for the part PART.
 }
 function row_height (                  {find height required for BOM row}
   in out  draw: eagle_draw_t;          {state for drawing to Eagle script}
-  in      part: part_t)                {part BOM row would be for}
+  in var  part: part_t)                {part BOM row would be for}
   :real;                               {height on page required for BOM row}
   val_param; internal;
 
+var
+  col: sys_int_machine_t;              {1-NCOL column number of current field}
+  maxlines: sys_int_machine_t;         {max lines required by any field}
+  nlines: sys_int_machine_t;           {number of lines required by current field}
+  text: string_var8192_t;              {string for current field}
+
 begin
-  row_height := 1.0;                   {TEMP PLACEHOLDER}
+  text.max := size_char(text.str);     {init local var string}
+
+  maxlines := 1;                       {init max number of lines required}
+  for col := 1 to ncol do begin        {once for each field in the row}
+    field_text_get (draw, part, col, text); {get the text for this field}
+    eagle_textwrap_nlines (            {find number of lines for this field}
+      draw,                            {state for drawing to Eagle script}
+      text,                            {text string to wrap}
+      col_width[col] - mar_lft - mar_rit, {max allowed width of each line}
+      nlines);                         {returned number of lines wrapped to}
+    maxlines := max(maxlines, nlines); {update max number of lines required}
+    end;
+
+  row_height := lines_height (draw, maxlines); {return required drawing height}
   end;
 {
 ********************************************************************************
@@ -252,11 +432,67 @@ begin
 }
 procedure bom_row (                    {draw BOM row}
   in out  draw: eagle_draw_t;          {state for drawing to Eagle script}
-  in      part: part_t;                {part to write BOM row for}
+  in var  part: part_t;                {part to write BOM row for}
   in out  curry: real);                {current Y on page, moved down}
   val_param; internal;
 
+var
+  col: sys_int_machine_t;              {1-NCOL column number of current field}
+  currx: real;                         {left edge X of current field}
+  nlines: sys_int_machine_t;           {number of lines used by current field}
+  maxlines: sys_int_machine_t;         {max lines used by any field}
+  text: string_var8192_t;              {string for current field}
+
 begin
+  text.max := size_char(text.str);     {init local var string}
+
+  maxlines := 1;                       {init max number of lines required}
+  currx := col_lft;                    {init left edge X of first field}
+{
+*   Field 1, right justified.
+}
+  col := 1;                            {set number of this field}
+  eagle_draw_text_anchor (draw, rend_torg_ur_k); {anchor text at upper right}
+
+  rend_set.cpnt_2d^ (                  {to top right of text}
+    currx + col_width[col] - mar_rit,
+    curry - mar_top);
+
+  field_text_get (draw, part, col, text); {get the text for this field}
+  eagle_textwrap_draw (                {draw the text for this field}
+    draw,                              {state for drawing to Eagle script}
+    text,                              {text string to wrap}
+    col_width[col] - mar_lft - mar_rit, {max allowed width of each line}
+    nlines);                           {returned number of lines wrapped to}
+  maxlines := max(maxlines, nlines);   {update max number of lines required}
+
+  currx := currx + col_width[col];     {advance across to next field}
+{
+*   Remaining fields, left justified.
+}
+  eagle_draw_text_anchor (draw, rend_torg_ul_k); {anchor text at upper left}
+
+  for col := 2 to ncol do begin        {once for each field in the row}
+    rend_set.cpnt_2d^ (                {to top left corner of text}
+      currx + mar_lft,
+      curry - mar_top);
+    field_text_get (draw, part, col, text); {get the text for this field}
+    eagle_textwrap_draw (              {draw the text for this field}
+      draw,                            {state for drawing to Eagle script}
+      text,                            {text string to wrap}
+      col_width[col] - mar_lft - mar_rit, {max allowed width of each line}
+      nlines);                         {returned number of lines wrapped to}
+    maxlines := max(maxlines, nlines); {update max number of lines required}
+    currx := currx + col_width[col];   {advance across to the next field}
+    end;
+{
+*   Draw the line below this row, update state for the next row.
+}
+  curry := curry - lines_height (draw, maxlines); {make Y of row bottom}
+
+  eagle_draw_thick (draw, linwid);     {set line width for row separator}
+  rend_set.cpnt_2d^ (col_lft, curry);  {to left end of separator}
+  rend_prim.vect_2d^ (col_rit, curry); {to right end of separator}
   end;
 {
 ********************************************************************************
@@ -334,6 +570,7 @@ next_part:                             {done with this part, on to next}
     part_p := part_p^.next_p;          {to next part in BOM parts list}
     end;
 
+  page_finish (draw_p^, curry);        {finish the last page}
   rend_set.exit_rend^;
   eagle_draw_end (draw_p, stat);       {end drawing to the Eagle script}
   end;
