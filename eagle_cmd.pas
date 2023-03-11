@@ -94,6 +94,10 @@ begin
 
   eagle_scr_str (scr, ''''(0), stat);  {end the text string}
   if sys_error(stat) then return;
+
+  eagle_scr_xy (scr, x, y, stat);      {write the coordinate to draw the text at}
+  if sys_error(stat) then return;
+
   eagle_scr_cmdend (scr, stat);
   end;
 {

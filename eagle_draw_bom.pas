@@ -77,19 +77,24 @@ begin
 {
 ********************************************************************************
 *
-*   Local subroutine NEW_PAGE (DRAW)
+*   Local subroutine NEW_PAGE (DRAW, PAGES)
 *
 *   Start a new page at the end of the Eagle schematic.  The page will be
-*   initialized with the standard IS frame.
+*   initialized with the standard IS frame.  PAGES is the total number of BOM
+*   pages created, and is updated to include the new page.
 }
 procedure new_page (                   {create and init new page at end of schematic}
-  in out  draw: eagle_draw_t);         {state for drawing to Eagle script}
+  in out  draw: eagle_draw_t;          {state for drawing to Eagle script}
+  in out  pages: sys_int_machine_t);   {total new pages created}
   val_param; internal;
 
 var
+  text: string_var80_t;                {scratch text string}
   stat: sys_err_t;
 
 begin
+  text.max := size_char(text.str);     {init local var string}
+
   eagle_draw_cmdend (draw, stat);      {end any command in progress}
   sys_error_abort (stat, '', '', nil, 0);
 
@@ -131,10 +136,18 @@ begin
     stat);
   sys_error_abort (stat, '', '', nil, 0);
 
-  eagle_scr_strline (draw.scr_p^,      {write the page description text}
-    'text ''Bill of Materials'' (6.525 .08);',
+  string_vstring (text, 'Bill of Materials'(0), -1); {init text to write}
+  if pages > 0 then begin              {this is not the first page ?}
+    string_appends (text, ', continued'(0));
+    end;
+  eagle_cmd_text (                     {write the page description text}
+    draw.scr_p^,                       {script writing state}
+    6.525, 0.08,                       {X,Y coodinate to write at}
+    text,                              {the text string to write}
     stat);
   sys_error_abort (stat, '', '', nil, 0);
+
+  pages := pages + 1;                  {count one more BOM page created}
   end;
 {
 ********************************************************************************
@@ -249,8 +262,7 @@ begin
     page_finish (draw, curry);         {finish the current page}
     end;
 
-  new_page (draw);                     {create a new page at end of schematic}
-  pages := pages + 1;                  {count one more total page created}
+  new_page (draw, pages);              {create a new page at end of schematic}
 
   curry := page_top;                   {start at the top of this new page}
   headers (draw, curry);               {draw the BOM column headers}
