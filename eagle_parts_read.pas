@@ -137,10 +137,10 @@ begin
 *   in the header line must exactly match what the BOM Eagle ULP creates.
 }
   string_fnam_extend (fnam, '.csv', inam); {try FNAM is file name directly}
-  csv_in_open (inam, cin, stat);       {open the CSV input file}
+  csv_in_open (inam, list.mem_p^, cin, stat); {open the CSV input file}
   if file_not_found (stat) then begin  {didn't find xxx.CSV ?}
     string_fnam_extend (fnam, '_parts.csv', inam); {try FNAM is board name}
-    csv_in_open (inam, cin, stat);     {open the CSV input file}
+    csv_in_open (inam, list.mem_p^, cin, stat); {open the CSV input file}
     end;
   if sys_error(stat) then return;
 
