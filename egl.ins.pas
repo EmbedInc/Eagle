@@ -5,4 +5,7 @@
 %include '(cog)lib/stuff.ins.pas';
 %include '(cog)lib/math.ins.pas';
 %include '(cog)lib/vect.ins.pas';
+%include '(cog)lib/part.ins.pas';
+%include '(cog)lib/img.ins.pas';
+%include '(cog)lib/rend.ins.pas';
 %include '(cog)lib/eagle.ins.pas';

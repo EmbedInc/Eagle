@@ -56,6 +56,14 @@
 *
 *     Restore the current transform from SXF.
 *
+*   WARC_2PC (E1, E2, CENT, CW)
+*
+*     Write ARC, from two endpoints and circle center.
+*
+*   WBEND_DIRECT
+*
+*     Set bend style to no implied bends.
+*
 *   WCHAR (C)
 *
 *     Write character C.
@@ -79,6 +87,10 @@
 *   WXY (X, Y)
 *
 *     Write X,Y coordinate in Eagle format (2D transform applied).
+*
+*   WXYP (P)
+*
+*     Write 2D coordinate in Eagle format (2D transform applied).
 *
 *   WMOVE (NAME, NUM, X, Y)
 *
@@ -447,6 +459,43 @@ begin
 {
 ********************************************************************************
 *
+*   Subroutine WXYP (P)
+*
+*   Write the 2D coordinate P in Eagle form to the current output line.  The 2D
+*   transform is applied to the coordinate before it is written.
+}
+procedure wxyp (                       {write Eagle 2D coordinate to output line}
+  in      p: vect_2d_t);               {the coordinate to write}
+  val_param; internal;
+
+var
+  stat: sys_err_t;
+
+begin
+  eagle_scr_xy (scr_p^, p.x, p.y, stat);
+  sys_error_abort (stat, '', '', nil, 0);
+  end;
+{
+********************************************************************************
+*
+*   Subroutine WBEND_DIRECT
+*
+*   Set the wire bend style so that line segments are draw directly from one
+*   endpoint to the other without any implied bends.
+}
+procedure wbend_direct;
+  val_param; internal;
+
+var
+  stat: sys_err_t;
+
+begin
+  eagle_cmd_bend_direct (scr_p^, stat);
+  sys_error_abort (stat, '', '', nil, 0);
+  end;
+{
+********************************************************************************
+*
 *   Subroutine WMOVE (NAME, NUM, X, Y)
 *
 *   Write MOVE command for the component of designator NAME followed by the
@@ -582,27 +631,50 @@ begin
 {
 ********************************************************************************
 *
-*   Subroutine WCORNER (X1, Y1, Y2, Y2, X3, Y3, RAD)
+*   Subroutine ARCDIR (CW)
 *
-*   Write commands to draw two line segments joined in a corner with a specific
-*   radius of curvature.  The unconnected ends of the line segments are at X1,Y1
-*   and X3,Y3.  The corner is at X2,Y2.  RAD is the radius of curvature at that
-*   corner.  The line segments will be connected by an arc instead of at the
-*   point X2,Y2.
+*   Write the keyword for setting the arc direction clockwise according to CW.
+*   CW is for a non-inverted coordinate space.  If the transform inverts
+*   according to INV, the direction of the arc is flipped.
 }
-procedure wcorner (                    {draw corner with radius of curvature}
-  in      x1, y1: real;                {starting point}
-  in      x2, y2: real;                {corner point}
-  in      x3, y3: real;                {ending point}
-  in      rad: rea);                   {radius of curvature for corner}
+procedure arcdir (                     {set arc direction}
+  in      cw: boolean);                {clockwise}
   val_param; internal;
 
+var
+  stat: sys_err_t;
+
 begin
+  eagle_scr_arcdir (scr_p^, cw, stat);
+  sys_error_abort (stat, '', '', nil, 0);
+  end;
+{
+********************************************************************************
+*
+*   Subroutine WARC_2PC (E1, E2, CENT, CW)
+*
+*   Write an ARC command, with the arc defined by its two endpoints and the
+*   center of the circle the arc is on.  E1 and E2 are the two endpoints, and
+*   CENT the circle center.  The arc is drawn clockwise from E1 to E2 when CW
+*   is TRUE, and counter-clockwise when it is false.
+}
+procedure warc_2pc (                   {write arc from two endpoints and circ center}
+  in      e1, e2: vect_2d_t;           {the arc endpoints}
+  in      cent: vect_2d_t;             {center of the circle the arc is on}
+  in      cw: boolean);                {draw clockwise from E1 to E2}
+  val_param; internal;
 
+var
+  stat: sys_err_t;
 
-
-
-
+begin
+  eagle_cmd_arc_2pc (                  {write the ARC command}
+    scr_p^,                            {script writing state}
+    e1, e2,                            {arc start and end points}
+    cent,                              {circle center}
+    cw,                                {clockwise}
+    stat);
+  sys_error_abort (stat, '', '', nil, 0);
   end;
 {
 ********************************************************************************
@@ -754,24 +826,4 @@ begin
     end;
   wchar (';');
   wline;
-  end;
-{
-********************************************************************************
-*
-*   Subroutine ARCDIR (CW)
-*
-*   Write the keyword for setting the arc direction clockwise according to CW.
-*   CW is for a non-inverted coordinate space.  If the transform inverts
-*   according to INV, the direction of the arc is flipped.
-}
-procedure arcdir (                     {set arc direction}
-  in      cw: boolean);                {clockwise}
-  val_param; internal;
-
-var
-  stat: sys_err_t;
-
-begin
-  eagle_scr_arcdir (scr_p^, cw, stat);
-  sys_error_abort (stat, '', '', nil, 0);
   end;
