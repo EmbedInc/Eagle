@@ -24,3 +24,8 @@ call src_pas %srcdir% %libname%_xform
 
 call src_lib %srcdir% %libname%
 call src_msg %srcdir% %libname%
+
+call src_get %srcdir% eagle_local.ins.pas
+copya eagle_local.ins.pas ~/eagle/scr/source/eagle_local.ins.pas
+call src_get %srcdir% egl.ins.pas
+copya egl.ins.pas ~/eagle/scr/source/egl.ins.pas
