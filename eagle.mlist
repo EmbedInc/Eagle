@@ -1,10 +1,12 @@
 eagle_cmd.obj
+eagle_cmd_arc.obj
 eagle_draw.obj
 eagle_draw_bom.obj
 eagle_draw_text.obj
 eagle_lib.obj
 eagle_parts.obj
 eagle_parts_read.obj
+eagle_rndcor.obj
 eagle_scr.obj
 eagle_textwrap.obj
 eagle_xform.obj

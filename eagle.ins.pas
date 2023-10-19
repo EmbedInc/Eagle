@@ -47,6 +47,14 @@ type
 {
 *   Subroutines and functions.
 }
+procedure eagle_cmd_arc_2pc (          {write arc, two endpoints and center}
+  in out  scr: eagle_scr_t;            {script writing state}
+  in      p1, p2: vect_2d_t;           {arc start and end points}
+  in      cent: vect_2d_t;             {center point of circle arc is on}
+  in      cw: boolean;                 {draw clockwise from P1 to P2}
+  out     stat: sys_err_t);            {completion status}
+  val_param; extern;
+
 procedure eagle_cmd_bend_direct (      {setting for wires directly from start to end coor}
   in out  scr: eagle_scr_t;            {script writing state}
   out     stat: sys_err_t);            {completion status}
@@ -91,6 +99,15 @@ procedure eagle_cmd_thick (            {write command to set line thickness}
   in out  scr: eagle_scr_t;            {script writing state}
   in      thick: real;                 {new line thickness}
   out     stat: sys_err_t);            {completion status}
+  val_param; extern;
+
+procedure eagle_rndcor_arc (           {find arc parameters for round corner}
+  in      corn: vect_2d_t;             {corner point with no arc (0 rad of curve)}
+  in      v1, v2: vect_2d_t;           {unit vectors for the two edges from corner}
+  in      rad: real;                   {radius of curvature for corner arc}
+  out     arcp: vect_2d_t;             {arc center point}
+  out     arc1, arc2: vect_2d_t;       {arc start and end points}
+  out     cw: boolean);                {draw arc clockwise from ARC1 to ARC2}
   val_param; extern;
 
 procedure eagle_draw_update (          {update RENDlib to setting were made}
