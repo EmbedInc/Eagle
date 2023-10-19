@@ -254,6 +254,14 @@ procedure eagle_scr_open (             {start writing an Eagle script file}
   out     stat: sys_err_t);            {completion status}
   val_param; extern;
 
+procedure eagle_scr_rndcor (           {draw edges with round corner between them}
+  in out  scr: eagle_scr_t;            {script writing state}
+  in      e1, e2: vect_2d_t;           {the open ends of the two edges}
+  in      corn: vect_2d_t;             {common corner point}
+  in      rad: real;                   {radius of curvature in the corner}
+  out     stat: sys_err_t);            {completion status}
+  val_param; extern;
+
 procedure eagle_scr_space (            {guarantee space separator after previous}
   in out  scr: eagle_scr_t;            {script writing state}
   out     stat: sys_err_t);            {completion status}

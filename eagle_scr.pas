@@ -16,6 +16,7 @@ define eagle_scr_cmdend;
 define eagle_scr_strlinev;
 define eagle_scr_strline;
 define eagle_scr_arcdir;
+define eagle_scr_rndcor;
 %include 'eagle2.ins.pas';
 {
 ********************************************************************************
@@ -412,4 +413,68 @@ begin
   if c
     then eagle_scr_str (scr, 'cw ', stat)
     else eagle_scr_str (scr, 'ccw ', stat);
+  end;
+{
+********************************************************************************
+*
+*   Subroutine EAGLE_SCR_RNDCOR (SCR_P, E1, E2, CORN, RAD, STAT)
+*
+*   Write the script commands to draw two edges meeting with a round corner.  E1
+*   and E2 are the open ends of the two edges.  CORN is the corner point where
+*   they would meet if the corner was not rounded.  RAD is the radius of
+*   curvature for the round corner.
+}
+procedure eagle_scr_rndcor (           {draw edges with round corner between them}
+  in out  scr: eagle_scr_t;            {script writing state}
+  in      e1, e2: vect_2d_t;           {the open ends of the two edges}
+  in      corn: vect_2d_t;             {common corner point}
+  in      rad: real;                   {radius of curvature in the corner}
+  out     stat: sys_err_t);            {completion status}
+  val_param;
+
+var
+  v1, v2: vect_2d_t;                   {init vectors from corner along each edge}
+  a1, a2: vect_2d_t;                   {the two arc endpoints}
+  acent: vect_2d_t;                    {center of the circle the arc is on}
+  cw: boolean;                         {draw arc clockwise}
+
+begin
+  v1.x := e1.x - corn.x;               {make unit vector along edge 1}
+  v1.y := e1.y - corn.y;
+  vect_2d_unitize (v1);
+
+  v2.x := e2.x - corn.x;               {make unit vector along edge 2}
+  v2.y := e2.y - corn.y;
+  vect_2d_unitize (v2);
+
+  eagle_rndcor_arc (                   {find the parameters of the corner arc}
+    corn,                              {corner point where the two edges meet}
+    v1, v2,                            {unit vectors from corner along each edge}
+    rad,                               {radius of curvature to draw corner with}
+    acent,                             {returned arc center point}
+    a1, a2,                            {returned arc end points}
+    cw);                               {returned arc direction}
+
+  eagle_scr_cmdend (scr, stat);        {make sure no command in progress}
+  if sys_error(stat) then return;
+
+  eagle_scr_str (scr, 'WIRE'(0), stat); {draw edge leading up to corner}
+  if sys_error(stat) then return;
+  eagle_scr_xy (scr, e1.x, e1.y, stat);
+  if sys_error(stat) then return;
+  eagle_scr_xy (scr, a1.x, a1.y, stat);
+  if sys_error(stat) then return;
+  eagle_scr_cmdend (scr, stat);
+  if sys_error(stat) then return;
+
+  eagle_cmd_arc_2pc (scr, a1, a2, acent, cw, stat); {draw the corner arc}
+  if sys_error(stat) then return;
+
+  eagle_scr_str (scr, 'WIRE'(0), stat); {draw edge away from corner}
+  if sys_error(stat) then return;
+  eagle_scr_xy (scr, a2.x, a2.y, stat);
+  if sys_error(stat) then return;
+  eagle_scr_xy (scr, e2.x, e2.y, stat);
+  if sys_error(stat) then return;
+  eagle_scr_cmdend (scr, stat);
   end;

@@ -120,7 +120,7 @@
 *
 *     Write HOLE command.
 *
-*   WCORNER (X1, Y1, X2, Y2, X3, Y3, RAD)
+*   WCORNER (E1, E2, CORN, RAD)
 *
 *     Write commands to draw corner with radius of curvature.
 *
@@ -673,6 +673,33 @@ begin
     e1, e2,                            {arc start and end points}
     cent,                              {circle center}
     cw,                                {clockwise}
+    stat);
+  sys_error_abort (stat, '', '', nil, 0);
+  end;
+{
+********************************************************************************
+*
+*   Subroutine WCORNER (E1, E2, CORN, RAD)
+*
+*   Draw edges meeting with round corner.  E1 and E2 are the open ends of the
+*   two edges.  CORN is the corner point the edges would meet if the corner was
+*   sharp.  RAD is the radius of curvature for the corner.
+}
+procedure wcorner (                    {draw two edges meeting in round corner}
+  in      e1, e2: vect_2d_t;           {open endpoints of the two edges}
+  in      corn: vect_2d_t;             {corner point}
+  in      rad: real);                  {radius of curvature for the corner}
+  val_param; internal;
+
+var
+  stat: sys_err_t;
+
+begin
+  eagle_scr_rndcor (                   {draw two edges with round corner between}
+    scr_p^,                            {script writing state}
+    e1, e2,                            {open endpoints of the two edges}
+    corn,                              {corner point (if corner were sharp)}
+    rad,                               {radius of curvature for the corner}
     stat);
   sys_error_abort (stat, '', '', nil, 0);
   end;
