@@ -112,6 +112,10 @@
 *
 *     End any current line, write Pascal string as whole new line.
 *
+*   WWIDTH (W)
+*
+*     Set line thickness.
+*
 *   WLINESEG (P1, P2)
 *
 *     Write WIRE command for line segment from P1 to P2.
@@ -591,6 +595,26 @@ var
 
 begin
   eagle_scr_strline (scr_p^, s, stat);
+  sys_error_abort (stat, '', '', nil, 0);
+  end;
+{
+********************************************************************************
+*
+*   Subroutine WWIDTH (W)
+*
+*   Set the line thickness.  Redundant line thickness settings are automatically
+*   eliminated.  All line thickness changes must be made thru this routine or
+*   EAGLE_CMD_THICK for this mechanism to work.
+}
+procedure wwidth (                     {set line thickness}
+  in      w: real);                    {new line thickness}
+  val_param; internal;
+
+var
+  stat: sys_err_t;
+
+begin
+  eagle_cmd_thick (scr_p^, w, stat);
   sys_error_abort (stat, '', '', nil, 0);
   end;
 {
