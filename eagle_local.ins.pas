@@ -114,7 +114,11 @@
 *
 *   WWIDTH (W)
 *
-*     Set line thickness.
+*     Set line thickness.  Redundant settings eliminated.
+*
+*   WSTYLE (STYLE)
+*
+*     Set line style, EAGLE_LSTYLE_xxx_k.  Redundant settings eliminated.
 *
 *   WLINESEG (P1, P2)
 *
@@ -615,6 +619,25 @@ var
 
 begin
   eagle_cmd_thick (scr_p^, w, stat);
+  sys_error_abort (stat, '', '', nil, 0);
+  end;
+{
+********************************************************************************
+*
+*   Subroutine WSTYLE (STYLE)
+*
+*   Set the line drawing style.  Use constants EAGLE_LSTYLE_xxx_K for STYLE.
+*   Redundant settings are automatically eliminated.
+}
+procedure wstyle (                     {set line drawing style}
+  in      style: eagle_lstyle_k_t);    {new line style}
+  val_param; internal;
+
+var
+  stat: sys_err_t;
+
+begin
+  eagle_cmd_lstyle (scr_p^, style, stat);
   sys_error_abort (stat, '', '', nil, 0);
   end;
 {

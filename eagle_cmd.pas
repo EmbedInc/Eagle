@@ -8,6 +8,7 @@ define eagle_cmd_text_s;
 define eagle_cmd_move_cmp;
 define eagle_cmd_bend_direct;
 define eagle_cmd_thick;
+define eagle_cmd_lstyle;
 %include 'eagle2.ins.pas';
 {
 ********************************************************************************
@@ -26,6 +27,9 @@ procedure eagle_cmd_circle (           {write circle command to Eagle script}
   val_param;
 
 begin
+  eagle_scr_cmdend (scr, stat);        {make sure any previous command ended}
+  if sys_error(stat) then return;
+
   eagle_scr_str (scr, 'circle'(0), stat);
   if sys_error(stat) then return;
   eagle_scr_xy (scr, x, y, stat);
@@ -51,6 +55,9 @@ procedure eagle_cmd_hole (             {write hole command to Eagle script}
   val_param;
 
 begin
+  eagle_scr_cmdend (scr, stat);        {make sure any previous command ended}
+  if sys_error(stat) then return;
+
   eagle_scr_str (scr, 'hole'(0), stat);
   if sys_error(stat) then return;
   eagle_scr_xy (scr, x, y, stat);
@@ -79,6 +86,9 @@ var
   c: char;                             {current text string character}
 
 begin
+  eagle_scr_cmdend (scr, stat);        {make sure any previous command ended}
+  if sys_error(stat) then return;
+
   eagle_scr_str (scr, 'text '''(0), stat);
   if sys_error(stat) then return;
 
@@ -139,6 +149,9 @@ procedure eagle_cmd_move_cmp (         {write MOVE command for a component}
   val_param;
 
 begin
+  eagle_scr_cmdend (scr, stat);        {make sure any previous command ended}
+  if sys_error(stat) then return;
+
   eagle_scr_str (scr, 'move '''(0), stat); {command name, start comp name}
   if sys_error(stat) then return;
 
@@ -169,6 +182,9 @@ procedure eagle_cmd_bend_direct (      {setting for wires directly from start to
   val_param;
 
 begin
+  eagle_scr_cmdend (scr, stat);        {make sure any previous command ended}
+  if sys_error(stat) then return;
+
   eagle_scr_str (scr, 'SET WIRE_BEND 2'(0), stat);
   if sys_error(stat) then return;
   eagle_scr_cmdend (scr, stat);
@@ -178,7 +194,8 @@ begin
 *
 *   Subroutine EAGLE_CMD_THICK (SCR, THICK, STAT)
 *
-*   Set the Eagle line thickness to THICK.
+*   Set the Eagle line thickness to THICK.  Redundant attempts to set the same
+*   value are silently eliminated.
 }
 procedure eagle_cmd_thick (            {write command to set line thickness}
   in out  scr: eagle_scr_t;            {script writing state}
@@ -192,6 +209,9 @@ begin
     return;
     end;
 
+  eagle_scr_cmdend (scr, stat);        {make sure any previous command ended}
+  if sys_error(stat) then return;
+
   eagle_scr_str (scr, 'CHANGE WIDTH '(0), stat);
   if sys_error(stat) then return;
   eagle_scr_fp (scr, thick, 4, stat);
@@ -200,4 +220,47 @@ begin
   if sys_error(stat) then return;
 
   scr.thick := thick;                  {remember new thickness setting}
+  end;
+{
+********************************************************************************
+*
+*   Subroutine EAGLE_CMD_LSTYLE (SCR, LSTYLE, STAT)
+*
+*   Set the Eagle line drawing stule to LSTYLE.  Redundant attempts to set the
+*   same value are silently eliminated.
+}
+procedure eagle_cmd_lstyle (           {write command to set line style}
+  in out  scr: eagle_scr_t;            {script writing state}
+  in      lstyle: eagle_lstyle_k_t;    {new line style, redundant settings eliminated}
+  out     stat: sys_err_t);            {completion status}
+  val_param;
+
+var
+  tk: string_var32_t;                  {new line style name}
+
+begin
+  tk.max := size_char(tk.str);         {init local var string}
+  sys_error_none (stat);               {init to no error encountered}
+
+  if scr.lstyle = lstyle then return;  {already set as desired ?}
+
+  tk.len := 0;                         {init to no line style name}
+  case lstyle of                       {which line style is selected ?}
+eagle_lstyle_solid_k: string_vstring (tk, 'CONTINUOUS'(0), -1);
+eagle_lstyle_dash_k: string_vstring (tk, 'SHORTDASH'(0), -1);
+eagle_lstyle_dashlong_k: string_vstring (tk, 'LONGDASH'(0), -1);
+eagle_lstyle_dashdot_k: string_vstring (tk, 'DASHDOT'(0), -1);
+    end;
+  scr.lstyle := lstyle;                {save new current line style ID}
+  if tk.len = 0 then return;           {nothing to do ?}
+
+  eagle_scr_cmdend (scr, stat);        {make sure any previous command ended}
+  if sys_error(stat) then return;
+
+  eagle_scr_str (scr, 'CHANGE STYLE '(0), stat);
+  if sys_error(stat) then return;
+  eagle_scr_strv (scr, tk, stat);      {write the new line style name}
+  if sys_error(stat) then return;
+  eagle_scr_cmdend (scr, stat);        {end the command}
+  if sys_error(stat) then return;
   end;

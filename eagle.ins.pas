@@ -16,6 +16,13 @@ type
   eagle_scr_p_t = ^eagle_scr_t;
   eagle_draw_p_t = ^eagle_draw_t;
 
+  eagle_lstyle_k_t = (                 {line styles}
+    eagle_lstyle_unk_k,                {line style is unknown}
+    eagle_lstyle_solid_k,              {solid}
+    eagle_lstyle_dash_k,               {dashed}
+    eagle_lstyle_dashlong_k,           {dashed, long dashes}
+    eagle_lstyle_dashdot_k);           {dash-dot}
+
   eagle_draw_t = record                {state for drawing to Eagle script}
     scr_p: eagle_scr_p_t;              {to script writing state}
     xlft, xrit, ybot, ytop: real;      {Eagle coordinate limits drawing to}
@@ -32,6 +39,7 @@ type
     next_p: eagle_scr_p_t;             {to next open script file in list}
     egl_p: eagle_p_t;                  {to library use state}
     thick: real;                       {current line thickness, < 0 for unknown}
+    lstyle: eagle_lstyle_k_t;          {current line style}
     conn: file_conn_t;                 {connection to .SCR output file}
     buf: string_var8192_t;             {one line output buffer}
     echout: boolean;                   {echo wcript writing to STDOUT}
@@ -73,6 +81,12 @@ procedure eagle_cmd_hole (             {write hole command to Eagle script}
   out     stat: sys_err_t);            {completion status}
   val_param; extern;
 
+procedure eagle_cmd_lstyle (           {write command to set line style}
+  in out  scr: eagle_scr_t;            {script writing state}
+  in      lstyle: eagle_lstyle_k_t;    {new line style, redundant settings eliminated}
+  out     stat: sys_err_t);            {completion status}
+  val_param; extern;
+
 procedure eagle_cmd_move_cmp (         {write MOVE command for a component}
   in out  scr: eagle_scr_t;            {script writing state}
   in      name: univ string_var_arg_t; {comp designator name, like "R" of R23}
@@ -97,7 +111,7 @@ procedure eagle_cmd_text_s (           {write text command from Pascal string}
 
 procedure eagle_cmd_thick (            {write command to set line thickness}
   in out  scr: eagle_scr_t;            {script writing state}
-  in      thick: real;                 {new line thickness}
+  in      thick: real;                 {new width, redundant settings eliminated}
   out     stat: sys_err_t);            {completion status}
   val_param; extern;
 

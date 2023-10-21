@@ -42,6 +42,7 @@ begin
   scr_p^.next_p := egl.scr_p;          {init script writing state}
   scr_p^.egl_p := addr(egl);
   scr_p^.thick := -1.0;                {init line thickness to unknown}
+  scr_p^.lstyle := eagle_lstyle_unk_k; {init line style to unknown}
   scr_p^.buf.max := size_char(scr_p^.buf.str);
   scr_p^.buf.len := 0;
   scr_p^.echout := false;
