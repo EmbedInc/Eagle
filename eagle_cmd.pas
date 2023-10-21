@@ -9,6 +9,8 @@ define eagle_cmd_move_cmp;
 define eagle_cmd_bend_direct;
 define eagle_cmd_thick;
 define eagle_cmd_lstyle;
+define eagle_cmd_dim_units;
+define eagle_cmd_dim_line;
 %include 'eagle2.ins.pas';
 {
 ********************************************************************************
@@ -260,6 +262,90 @@ eagle_lstyle_dashdot_k: string_vstring (tk, 'DASHDOT'(0), -1);
   eagle_scr_str (scr, 'CHANGE STYLE '(0), stat);
   if sys_error(stat) then return;
   eagle_scr_strv (scr, tk, stat);      {write the new line style name}
+  if sys_error(stat) then return;
+  eagle_scr_cmdend (scr, stat);        {end the command}
+  if sys_error(stat) then return;
+  end;
+{
+********************************************************************************
+*
+*   Subroutine EAGLE_CMD_DIM_UNITS (SCR, UNIT, NFRAC, SHOW, STAT)
+*
+*   Set the units for writing subsequent dimension values.
+*
+*   UNIT specifies the units to write values in.  Use EAGLE_UNIT_xxx_K.
+*
+*   NFRAC is the number of fraction digits (digits right of the decimal point)
+*   to write value with.
+*
+*   SHOW indicates whether to explicitly show the unit with each value.
+}
+procedure eagle_cmd_dim_units (        {set units for dimension values}
+  in out  scr: eagle_scr_t;            {script writing state}
+  in      unit: eagle_unit_k_t;        {units to write values in}
+  in      nfrac: sys_int_machine_t;    {number of fraction digits (right of point)}
+  in      show: boolean;               {show the units with each value}
+  out     stat: sys_err_t);            {completion status}
+  val_param;
+
+begin
+  eagle_scr_cmdend (scr, stat);        {make sure any previous command ended}
+  if sys_error(stat) then return;
+
+  eagle_scr_str (scr, 'CHANGE DUNIT '(0), stat); {start the command}
+  if sys_error(stat) then return;
+
+  case unit of                         {which units to use ?}
+eagle_unit_micron_k: eagle_scr_str (scr, 'MIC'(0), stat);
+eagle_unit_mm_k: eagle_scr_str (scr, 'MM'(0), stat);
+eagle_unit_mil_k: eagle_scr_str (scr, 'MIL'(0), stat);
+eagle_unit_inch_k: eagle_scr_str (scr, 'INCH'(0), stat);
+otherwise
+    writeln;
+    writeln ('Unrecognized units ID of ', ord(unit), ' in EAGLE_CMD_DIM_UNITS.');
+    sys_bomb;
+    end;
+  if sys_error(stat) then return;
+  eagle_scr_char (scr, ' ', stat);
+  if sys_error(stat) then return;
+
+  if show
+    then eagle_scr_str (scr, 'ON', stat)
+    else eagle_scr_str (scr, 'OFF', stat);
+  if sys_error(stat) then return;
+  eagle_scr_char (scr, ' ', stat);
+  if sys_error(stat) then return;
+
+  eagle_scr_int (scr, nfrac, stat);    {number of digits right of decimal point}
+  if sys_error(stat) then return;
+  eagle_scr_cmdend (scr, stat);        {end the command}
+  if sys_error(stat) then return;
+  end;
+{
+********************************************************************************
+*
+*   Subroutine EAGLE_CMD_DIM_LINE (SCR, P1, P2, STAT)
+*
+*   Write an Eagle DIMENSION command to show the length of the line segment from
+*   P1 to P2.
+}
+procedure eagle_cmd_dim_line (         {draw dimension of line segment}
+  in out  scr: eagle_scr_t;            {script writing state}
+  in      p1, p2: vect_2d_t;           {line segment endpoints}
+  out     stat: sys_err_t);            {completion status}
+  val_param;
+
+begin
+  eagle_scr_cmdend (scr, stat);        {make sure any previous command ended}
+  if sys_error(stat) then return;
+
+  eagle_scr_str (scr, 'DIMENSION PARALLEL'(0), stat);
+  if sys_error(stat) then return;
+  eagle_scr_xy_coorm (scr, p1.x, p1.y, [eagle_coorm_ctrl_k], stat);
+  if sys_error(stat) then return;
+  eagle_scr_xy (scr, p2.x, p2.y, stat);
+  if sys_error(stat) then return;
+  eagle_scr_xy (scr, (p1.x + p2.x)/2.0, (p1.y + p2.y)/2.0, stat);
   if sys_error(stat) then return;
   eagle_scr_cmdend (scr, stat);        {end the command}
   if sys_error(stat) then return;

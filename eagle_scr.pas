@@ -10,6 +10,8 @@ define eagle_scr_strv;
 define eagle_scr_str;
 define eagle_scr_int;
 define eagle_scr_fp;
+define eagle_scr_coorm;
+define eagle_scr_xy_coorm;
 define eagle_scr_xy;
 define eagle_scr_line;
 define eagle_scr_cmdend;
@@ -246,6 +248,121 @@ begin
 {
 ********************************************************************************
 *
+*   Subroutine EAGLE_SCR_COORM (SCR, COORM, STAT)
+*
+*   Write the characters to specify the coordinate modifiers listed in COORM.
+*   Coordinate modifiers are used in scripts to simulate various possible user
+*   actions as if the coordinate is being supplied by a left mouse click.
+*
+*   If any modifier character is written, then a space is written after the
+*   modifier characters.
+}
+procedure eagle_scr_coorm (            {write coordinate modifier characters}
+  in out  scr: eagle_scr_t;            {script writing state}
+  in      coorm: eagle_coorm_t;        {list of coordinate modifiers to write}
+  out     stat: sys_err_t);            {completion status}
+  val_param;
+
+var
+  wr: boolean;                         {wrote at least one char}
+
+begin
+  wr := false;
+
+  if eagle_coorm_mouser_k in coorm then begin {right mouse button ?}
+    eagle_scr_char (scr, '>', stat);
+    if sys_error(stat) then return;
+    wr := true;
+    end;
+
+  if eagle_coorm_alt_k in coorm then begin {ALT key down ?}
+    eagle_scr_char (scr, 'A', stat);
+    if sys_error(stat) then return;
+    wr := true;
+    end;
+
+  if eagle_coorm_ctrl_k in coorm then begin {CTRL key down ?}
+    eagle_scr_char (scr, 'C', stat);
+    if sys_error(stat) then return;
+    wr := true;
+    end;
+
+  if eagle_coorm_polar_k in coorm then begin {polar coordinate ?}
+    eagle_scr_char (scr, 'P', stat);
+    if sys_error(stat) then return;
+    wr := true;
+    end;
+
+  if eagle_coorm_rel_k in coorm then begin {relative to mark ?}
+    eagle_scr_char (scr, 'R', stat);
+    if sys_error(stat) then return;
+    wr := true;
+    end;
+
+  if eagle_coorm_shift_k in coorm then begin {SHIFT key down ?}
+    eagle_scr_char (scr, 'S', stat);
+    if sys_error(stat) then return;
+    wr := true;
+    end;
+
+  if wr then begin                     {something was written ?}
+    eagle_scr_char (scr, ' ', stat);   {add space separator after modifiers}
+    if sys_error(stat) then return;
+    end;
+  end;
+{
+********************************************************************************
+*
+*   Subroutine EAGLE_SCR_XY_COORM (SCR, X, Y, COORM, STAT)
+*
+*   Append the X,Y coordinate to the end of the line being built for writing to
+*   the Eagle script open on SCR.  The X,Y coordinate will be written in the
+*   format required by Eagle commands.  A leading space is automatically added
+*   if not already present.
+*
+*   The current 2D transform is applied to point X,Y before it is written.  The
+*   last-written coordinate is updated to X,Y.
+*
+*   COORM is the set of coordinate modifiers to apply.  These are used to
+*   simulate the various possible user actions when providing a coordinate with
+*   a left mouse click.
+}
+procedure eagle_scr_xy_coorm (         {write X,Y coor with possible modifier}
+  in out  scr: eagle_scr_t;            {script writing state}
+  in      x, y: real;                  {X,Y coordinate, tranform applied before write}
+  in      coorm: eagle_coorm_t;        {set of coordinate modifiers to apply}
+  out     stat: sys_err_t);            {completion status}
+  val_param;
+
+var
+  egl_p: eagle_p_t;                    {to EAGLE library use state}
+  x2, y2: real;                        {transformed coordinate}
+
+begin
+  egl_p := scr.egl_p;                  {save pointer to library use state}
+  eagle_xform_pnt (egl_p^, x, y, x2, y2); {transform the point}
+
+  eagle_scr_space (scr, stat);         {ensure space separator after previous}
+  if sys_error(stat) then return;
+  eagle_scr_str (scr, '('(0), stat);   {start 2D coordinate}
+  if sys_error(stat) then return;
+  eagle_scr_coorm (scr, coorm, stat);  {write any coordinate modifiers}
+  if sys_error(stat) then return;
+  eagle_scr_fp (scr, x2, 4, stat);     {write X}
+  if sys_error(stat) then return;
+  eagle_scr_char (scr, ' ', stat);     {space before Y}
+  if sys_error(stat) then return;
+  eagle_scr_fp (scr, y2, 4, stat);     {write Y}
+  if sys_error(stat) then return;
+  eagle_scr_char (scr, ')', stat);     {end the 2D coordinate}
+  if sys_error(stat) then return;
+
+  egl_p^.lastx := x;                   {update last point written}
+  egl_p^.lasty := y;
+  end;
+{
+********************************************************************************
+*
 *   Subroutine EAGLE_SCR_XY (SCR, X, Y, STAT)
 *
 *   Append the X,Y coordinate to the end of the line being built for writing to
@@ -261,27 +378,8 @@ procedure eagle_scr_xy (               {write X,Y coor in Eagle format to script
   out     stat: sys_err_t);            {completion status}
   val_param;
 
-var
-  egl_p: eagle_p_t;                    {to EAGLE library use state}
-  x2, y2: real;                        {transformed coordinate}
-
 begin
-  egl_p := scr.egl_p;                  {save pointer to library use state}
-  eagle_xform_pnt (egl_p^, x, y, x2, y2); {transform the point}
-
-  eagle_scr_str (scr, ' ('(0), stat);  {start 2D coordinate}
-  if sys_error(stat) then return;
-  eagle_scr_fp (scr, x2, 4, stat);     {write X}
-  if sys_error(stat) then return;
-  eagle_scr_char (scr, ' ', stat);     {space before Y}
-  if sys_error(stat) then return;
-  eagle_scr_fp (scr, y2, 4, stat);     {write Y}
-  if sys_error(stat) then return;
-  eagle_scr_char (scr, ')', stat);     {end the 2D coordinate}
-  if sys_error(stat) then return;
-
-  egl_p^.lastx := x;                   {update last point written}
-  egl_p^.lasty := y;
+  eagle_scr_xy_coorm (scr, x, y, [], stat); {write coordinate without modifiers}
   end;
 {
 ********************************************************************************

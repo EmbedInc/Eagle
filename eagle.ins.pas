@@ -23,6 +23,21 @@ type
     eagle_lstyle_dashlong_k,           {dashed, long dashes}
     eagle_lstyle_dashdot_k);           {dash-dot}
 
+  eagle_coorm_k_t = (                  {IDs for possible X,Y coordinate modifiers}
+    eagle_coorm_mouser_k,              {as if right mouse key pressed}
+    eagle_coorm_alt_k,                 {as if ALT key pressed}
+    eagle_coorm_ctrl_k,                {as if CTRL key pressed}
+    eagle_coorm_polar_k,               {polar coordinates}
+    eagle_coorm_rel_k,                 {relative to the current mark}
+    eagle_coorm_shift_k);              {as if SHIFT key pressed}
+  eagle_coorm_t = set of eagle_coorm_k_t;
+
+  eagle_unit_k_t = (                   {ID for the Eagle coordinate units}
+    eagle_unit_micron_k,               {micro-meter}
+    eagle_unit_mm_k,                   {millimeter}
+    eagle_unit_mil_k,                  {mil (1/1000 inch)}
+    eagle_unit_inch_k);                {inch}
+
   eagle_draw_t = record                {state for drawing to Eagle script}
     scr_p: eagle_scr_p_t;              {to script writing state}
     xlft, xrit, ybot, ytop: real;      {Eagle coordinate limits drawing to}
@@ -75,6 +90,20 @@ procedure eagle_cmd_circle (           {write circle command to Eagle script}
   out     stat: sys_err_t);            {completion status}
   val_param; extern;
 
+procedure eagle_cmd_dim_line (         {draw dimension of line segment}
+  in out  scr: eagle_scr_t;            {script writing state}
+  in      p1, p2: vect_2d_t;           {line segment endpoints}
+  out     stat: sys_err_t);            {completion status}
+  val_param; extern;
+
+procedure eagle_cmd_dim_units (        {set units for dimension values}
+  in out  scr: eagle_scr_t;            {script writing state}
+  in      unit: eagle_unit_k_t;        {units to write values in}
+  in      nfrac: sys_int_machine_t;    {number of fraction digits (right of point)}
+  in      show: boolean;               {show the units with each value}
+  out     stat: sys_err_t);            {completion status}
+  val_param; extern;
+
 procedure eagle_cmd_hole (             {write hole command to Eagle script}
   in out  scr: eagle_scr_t;            {script writing state}
   in      x, y: real;                  {center point}
@@ -113,15 +142,6 @@ procedure eagle_cmd_thick (            {write command to set line thickness}
   in out  scr: eagle_scr_t;            {script writing state}
   in      thick: real;                 {new width, redundant settings eliminated}
   out     stat: sys_err_t);            {completion status}
-  val_param; extern;
-
-procedure eagle_rndcor_arc (           {find arc parameters for round corner}
-  in      corn: vect_2d_t;             {corner point with no arc (0 rad of curve)}
-  in      v1, v2: vect_2d_t;           {unit vectors for the two edges from corner}
-  in      rad: real;                   {radius of curvature for corner arc}
-  out     arcp: vect_2d_t;             {arc center point}
-  out     arc1, arc2: vect_2d_t;       {arc start and end points}
-  out     cw: boolean);                {draw arc clockwise from ARC1 to ARC2}
   val_param; extern;
 
 procedure eagle_draw_update (          {update RENDlib to setting were made}
@@ -215,6 +235,15 @@ procedure eagle_parts_read (           {read xxx_PARTS.CSV file written by BOM U
   out     stat: sys_err_t);            {completion status}
   val_param; extern;
 
+procedure eagle_rndcor_arc (           {find arc parameters for round corner}
+  in      corn: vect_2d_t;             {corner point with no arc (0 rad of curve)}
+  in      v1, v2: vect_2d_t;           {unit vectors for the two edges from corner}
+  in      rad: real;                   {radius of curvature for corner arc}
+  out     arcp: vect_2d_t;             {arc center point}
+  out     arc1, arc2: vect_2d_t;       {arc start and end points}
+  out     cw: boolean);                {draw arc clockwise from ARC1 to ARC2}
+  val_param; extern;
+
 procedure eagle_scr_arcdir (           {write arc direction keyword, separators added}
   in out  scr: eagle_scr_t;            {script writing state}
   in      cw: boolean;                 {arc direction is clockwise}
@@ -234,6 +263,12 @@ procedure eagle_scr_close (            {close Eagle script output file}
 
 procedure eagle_scr_cmdend (           {end any cmd in progress, write line}
   in out  scr: eagle_scr_t;            {script writing state}
+  out     stat: sys_err_t);            {completion status}
+  val_param; extern;
+
+procedure eagle_scr_coorm (            {write coordinate modifier characters}
+  in out  scr: eagle_scr_t;            {script writing state}
+  in      coorm: eagle_coorm_t;        {list of coordinate modifiers to write}
   out     stat: sys_err_t);            {completion status}
   val_param; extern;
 
@@ -308,6 +343,13 @@ procedure eagle_scr_strv (             {write var string to script file}
 procedure eagle_scr_xy (               {write X,Y coor in Eagle format to script file}
   in out  scr: eagle_scr_t;            {script writing state}
   in      x, y: real;                  {X,Y coordinate, tranform applied before write}
+  out     stat: sys_err_t);            {completion status}
+  val_param; extern;
+
+procedure eagle_scr_xy_coorm (         {write X,Y coor with possible modifier}
+  in out  scr: eagle_scr_t;            {script writing state}
+  in      x, y: real;                  {X,Y coordinate, tranform applied before write}
+  in      coorm: eagle_coorm_t;        {set of coordinate modifiers to apply}
   out     stat: sys_err_t);            {completion status}
   val_param; extern;
 

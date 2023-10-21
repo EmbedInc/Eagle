@@ -144,6 +144,15 @@
 *
 *     Write Pascal string TEXT at X,Y.
 *
+*   WDIMUNIT_MM (N)
+*   WDIMUNIT_INCH (N)
+*
+*     Set units for dimension values, N number of fraction digits.
+*
+*   WDIMLINE (P1, P2)
+*
+*     Draw dimensioned line segment, from P1 to P2.
+*
 *   MM_INCH (DIST)
 *   INCH_MM (DIST)
 *
@@ -817,6 +826,62 @@ var
 
 begin
   eagle_cmd_text_s (scr_p^, x, y, text, stat);
+  sys_error_abort (stat, '', '', nil, 0);
+  end;
+{
+********************************************************************************
+*
+*   Subroutine WDIMUNIT_MM (N)
+*
+*   Set units of dimension values to millimeters with N fraction digits.
+}
+procedure wdimunit_mm (                {set dimension units to mm}
+  in      n: sys_int_machine_t);       {number of fraction digits}
+  val_param; internal;
+
+var
+  stat: sys_err_t;
+
+begin
+  eagle_cmd_dim_units (scr_p^, eagle_unit_mm_k, n, false, stat);
+  sys_error_abort (stat, '', '', nil, 0);
+  end;
+{
+********************************************************************************
+*
+*   Subroutine WDIMUNIT_INCH (N)
+*
+*   Set units of dimension values to inches with N fraction digits.
+}
+procedure wdimunit_inch (              {set dimension units to inches}
+  in      n: sys_int_machine_t);       {number of fraction digits}
+  val_param; internal;
+
+var
+  stat: sys_err_t;
+
+begin
+  eagle_cmd_dim_units (scr_p^, eagle_unit_inch_k, n, false, stat);
+  sys_error_abort (stat, '', '', nil, 0);
+  end;
+{
+********************************************************************************
+*
+*   Subroutine WDIMLINE (P1, P2)
+*
+*   Draw a dimensioned line from P1 to P2.  The line length will be shown.  The
+*   units and precision the length value is shown with can be set with the
+*   WDIMUNIT_xxx routines.
+}
+procedure wdimline (                   {draw dimensioned line segment}
+  in      p1, p2: vect_2d_t);          {line segment endpoints}
+  val_param; internal;
+
+var
+  stat: sys_err_t;
+
+begin
+  eagle_cmd_dim_line (scr_p^, p1, p2, stat);
   sys_error_abort (stat, '', '', nil, 0);
   end;
 {
