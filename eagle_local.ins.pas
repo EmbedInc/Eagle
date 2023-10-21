@@ -112,6 +112,10 @@
 *
 *     End any current line, write Pascal string as whole new line.
 *
+*   WLINESEG (P1, P2)
+*
+*     Write WIRE command for line segment from P1 to P2.
+*
 *   WCIRC (X, Y, RAD)
 *
 *     Write CIRCLE command.
@@ -587,6 +591,33 @@ var
 
 begin
   eagle_scr_strline (scr_p^, s, stat);
+  sys_error_abort (stat, '', '', nil, 0);
+  end;
+{
+********************************************************************************
+*
+*   Subroutine WLINESEG (P1, P2)
+*
+*   Write a WIRE command to draw a line segment from point P1 to point P2.
+}
+procedure wlineseg (                   {write line segment}
+  in      p1, p2: vect_2d_t);          {line segment start and end points}
+  val_param; internal;
+
+var
+  stat: sys_err_t;
+
+begin
+  eagle_scr_line (scr_p^, stat);       {make sure any existing output line is ended}
+  sys_error_abort (stat, '', '', nil, 0);
+
+  eagle_scr_str (scr_p^, 'WIRE'(0), stat);
+  sys_error_abort (stat, '', '', nil, 0);
+  eagle_scr_xy (scr_p^, p1.x, p1.y, stat);
+  sys_error_abort (stat, '', '', nil, 0);
+  eagle_scr_xy (scr_p^, p2.x, p2.y, stat);
+  sys_error_abort (stat, '', '', nil, 0);
+  eagle_scr_cmdend (scr_p^, stat);
   sys_error_abort (stat, '', '', nil, 0);
   end;
 {
