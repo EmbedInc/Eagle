@@ -35,8 +35,8 @@ block                        //set DESTDIR
     stop 3
     endif
   dir destdir
-  dir existgo eagle
-  dir existgo ulp
+  dir existgo "eagle"
+  dir existgo "ulp"
   set destdir [dir]
   endblock
 
