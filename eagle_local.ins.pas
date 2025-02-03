@@ -2,6 +2,15 @@
 *   program after definitions of types, variables, and the like, and before the
 *   first executable code.
 *
+*   This file should be used for "simple" programs.  Complicated programs may
+*   need to use the full linkable Eagle library, and its include file
+*   "eagle.ins.pas".  The default template, "template.pas", uses the full
+*   eagle library and also includes this file.
+*
+*   The source code of this file and the EAGLE library are in the EAGLE git
+*   repository.  This file gets automatically overwritten when the EAGLE library
+*   is built.
+*
 *   This file defines one-off routines that are included in the main program in
 *   source code form, not linked to from a library.
 *
