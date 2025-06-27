@@ -1,0 +1,31 @@
+                        Embed program BOM_KINETIC
+                               27 June 2025
+
+bom_kinetic
+
+This program creates a CSV file that can be used to create a spreadsheet.
+The grid from the spreadsheet can be copied and pasted into the Epicorp
+Kinetic program to poplulate the BOM of a part.  This process automates
+creating the BOM from an Eagle schematic without requiring manual entry of
+BOM data.
+
+The program must be run in the directory for the particular Eagle board.
+The board name is assumed to be the directory leafname.
+
+The <board>_bom.csv file is read.  This file is created by the BOM ULP in
+Eagle, so this ULP must be run before the BOM_KINETIC program.
+
+The program creates the KINETIC.CSV file.  This file is meant to be used
+to create a spreadsheet.  On Windows, "kinetic.csv" can be run from the
+command shell to automatically open Excel and import the data from the
+file.  The contents of the resulting Excel grid (except for the column
+headings line) can then be pasted into the Materials List in Kinetic. This
+can be done by right clicking on the materials grid, then selecting Paste.
+
+The first 5 column headings of the Materials list in Kinetic must be:
+
+  Mtl   Part   Description   Qty/Parent   MfgComment
+
+in that order.  The contents of the description column in the spreadsheet
+does not matter since it is a "fixed field" in Kinetic, which is derived
+from the part number (the "Part" field).

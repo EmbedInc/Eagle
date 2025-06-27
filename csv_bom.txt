@@ -1,5 +1,5 @@
                           Embed program CSV_BOM
-                            16 February 2023
+                        Last Updated 27 June 2025
 
 csv_bom <.csv file name>
 
@@ -46,8 +46,8 @@ This program performs several tasks:
   Writes <name>_bom.tsv
 
     Intended for directly importing into a spreadsheet, like Microsoft
-    Excel.  The spreadsheet will contain equations total parts and costs.
-    Lines will be added to the end for activities like kitting and
+    Excel.  The spreadsheet will contain equations for total parts and
+    costs.  Lines will be added to the end for activities like kitting and
     assembly, to facility computing overall cost of a run.
 
     Fields within a line are separated by TAB characters.  The first line
@@ -111,7 +111,7 @@ The user steps in producing a BOM from an Eagle board or schematic are:
 
     In general, it is best to add missing information with the most global
     scope possible.  The three places such information can come from, in
-    local to global order are:
+    global to local order are:
 
       Library
 
