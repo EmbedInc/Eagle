@@ -135,6 +135,7 @@ begin
   string_vstring (fnam, 'kinetic'(0), -1); {CSV output file name}
   csv_out_open (fnam, csv, stat);      {open CSV output file}
   sys_error_abort (stat, '', '', nil, 0);
+  csv.flags := csv.flags + [csv_outflag_minchar_k]; {only min output chars}
   {
   *   Write CSV file header line.
   }
